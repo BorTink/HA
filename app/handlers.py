@@ -10,9 +10,9 @@ from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from dotenv import load_dotenv
 from loguru import logger
 
+from utils import process_prompt
 from .states import PersonChars, TimetableDays
 from app import keyboards as kb
-from gpt.chat import fill_prompt
 import dal
 
 load_dotenv()
@@ -72,22 +72,24 @@ async def create_edit(callback: types.CallbackQuery):
 @dp.callback_query_handler(state=None, text='lookup_data')
 async def get_data(callback: types.CallbackQuery):
     logger.info(f'Формируется промпт для {callback.from_user.id}')
-    data = await dal.User.select_attributes(callback.from_user.id)
     await callback.message.answer(
         f'Формируется промпт'
     )
-    timetable, recipes, shopping_list, trainings = await fill_prompt(data)
-    await dal.Timetable.update_timetable(callback.from_user.id, timetable)
-    await dal.Recipes.update_recipes(callback.from_user.id, 'monday', recipes)
-    await dal.ShoppingList.update_shopping_list(callback.from_user.id, shopping_list)
-    await dal.Trainings.update_trainings(callback.from_user.id, 'monday', trainings)
-
-    await TimetableDays.monday.set()
-    timetable = await dal.Timetable.get_timetable(callback.from_user.id)
-    await callback.message.answer(
-        f'Вот ваше расписание на понедельник:\n{timetable.monday}',
-        reply_markup=kb.timetable
-    )
+    for attempt_number in range(3):
+        try:
+            timetable = await process_prompt(
+                user_id=callback.from_user.id
+            )
+            await callback.message.answer(
+                f'Вот ваше расписание на понедельник:\n{timetable.monday}',
+                reply_markup=kb.timetable
+            )
+        except Exception as exc:
+            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
+            if attempt_number == 2:
+                await callback.message.answer(
+                    'При создании расписания произошла ошибка'
+                )
 
 
 @dp.callback_query_handler(state=None, text='SHOW_TIMETABLE')
@@ -201,6 +203,7 @@ async def show_timetable(callback: types.CallbackQuery):
         f'Вот ваше расписание на понедельник:\n{timetable.monday}',
         reply_markup=kb.timetable
     )
+
 
 @dp.callback_query_handler(state=PersonChars.sex)
 async def add_sex(callback: types.CallbackQuery, state: FSMContext):
@@ -444,10 +447,21 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
             'Ваши данные были внесены в базу, формируется промпт'
         )
 
-        prompt_data = await dal.User.select_attributes(callback.from_user.id)
-        response_dict = await fill_prompt(prompt_data)
-        for key, value in response_dict:
-            await callback.message.answer(f'{key}:\n{value}')
+        for attempt_number in range(3):
+            try:
+                timetable = await process_prompt(
+                    user_id=callback.from_user.id
+                )
+                await callback.message.answer(
+                    f'Вот ваше расписание на понедельник:\n{timetable.monday}',
+                    reply_markup=kb.timetable
+                )
+            except Exception as exc:
+                logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
+                if attempt_number == 2:
+                    await callback.message.answer(
+                        'При создании расписания произошла ошибка'
+                    )
 
     if callback.data == 'no':
         async with state.proxy() as data:
@@ -468,13 +482,23 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
 
     await state.finish()
     await message.answer(
-        'Ваши данные были внесены в базу, формируется промпт'
+        'Ваши данные были внесены в базу.формируется промпт'
     )
-
-    prompt_data = await dal.User.select_attributes(message.from_user.id)
-    response = await fill_prompt(prompt_data)
-
-    await message.answer(response)
+    for attempt_number in range(3):
+        try:
+            timetable = await process_prompt(
+                user_id=message.from_user.id
+            )
+            await message.answer(
+                f'Вот ваше расписание на понедельник:\n{timetable.monday}',
+                reply_markup=kb.timetable
+            )
+        except Exception as exc:
+            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number+1}')
+            if attempt_number == 2:
+                await message.answer(
+                    'При создании расписания произошла ошибка'
+                )
 
 #
 # @dp.message_handler(state='*')
