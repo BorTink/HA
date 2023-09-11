@@ -20,7 +20,7 @@ class ChatGPT:
     def gpt_create_timetable(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Заменить на GPT-4
+            model="babbage-002",
             messages=self.messages,
             max_tokens=3100
         )
@@ -35,7 +35,7 @@ class ChatGPT:
 
         self.messages.append({"role": "user", "content": recipes_message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Заменить на GPT-4
+            model="babbage-002",
             messages=self.messages,
             max_tokens=1500
         )
@@ -47,7 +47,7 @@ class ChatGPT:
 
         self.messages.append({"role": "user", "content": shopping_list_message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Заменить на GPT-4
+            model="babbage-002",
             messages=self.messages,
             max_tokens=1500
         )
@@ -64,7 +64,7 @@ class ChatGPT:
     def gpt_get_trainings(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Заменить на GPT-4
+            model="babbage-002",
             messages=self.messages,
             max_tokens=1500
         )
