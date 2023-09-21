@@ -11,9 +11,11 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from utils import process_prompt
-from .states import PersonChars, TimetableDays
+from .states import PersonChars, TimetableDays, GPT
 from app import keyboards as kb
 import dal
+from gpt.chat import ChatGPT
+from gpt.chat_upgraded import UpgradedChatBot
 
 load_dotenv()
 bot = Bot(os.getenv('TOKEN'))
@@ -500,20 +502,17 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
                     'При создании расписания произошла ошибка'
                 )
 
-#
-# @dp.message_handler(state='*')
-# async def answer(message: types.Message, state: FSMContext):
-#     if state is not GPT.gpt:
-#         await state.set_state(GPT.gpt)
-#
-#     data = await state.get_data()
-#     print(data)
-#     if data == {}:
-#         await state.update_data(gpt=ChatGPT())
-#         data = await state.get_data()
-#
-#     text = message.text
-#     reply = data['gpt'].chat(text)
-#     await state.update_data(gpt=data['gpt'])
-#
-#     await message.reply(reply)
+
+@dp.message_handler(state='*')
+async def answer(message: types.Message, state: FSMContext):
+    global gpt_bot
+    try:
+        print(type(gpt_bot))
+    except Exception:
+        gpt_bot = UpgradedChatBot()
+
+    await message.reply('Сейчас..')
+    text = message.text
+    reply = gpt_bot.chatbot(text)
+
+    await message.reply(reply)

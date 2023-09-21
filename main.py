@@ -2,6 +2,7 @@ import os
 
 from aiogram import executor
 from loguru import logger
+import datasets
 
 from app.handlers import dp
 import dal
@@ -32,4 +33,5 @@ if __name__ == '__main__':
     logger.opt(exception=False)
 
     with logger.contextualize(ip=None, path=None, method=None):
+        datasets.disable_caching()
         executor.start_polling(dp, on_startup=on_startup, skip_updates=True, timeout=None)

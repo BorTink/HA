@@ -1,26 +1,37 @@
 import re
 
 import openai
+from loguru import logger
 
 import dal
 import schemas
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 class ChatGPT:
     def __init__(self):
         openai.api_key = "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"
-        self.starting_message = {"role": "system", "content": "You are a gym training tutor bot designed to create meal"
-                                                              " and training plans"}
+        self.starting_message = {"role": "system", "content": "You can help with code"}
         self.messages = [
             self.starting_message
         ]
 
-    def gpt_create_timetable(self, message):
+    def chat(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="babbage-002",
+            model="gpt-3.5-turbo",
+            messages=self.messages,
+            max_tokens=3100
+        )
+        return response["choices"][0]["message"].content
+
+    def gpt_create_timetable(self, message):
+        self.messages.append({"role": "user", "content": message})
+        logger.info(f'Длина промпта для расписания '
+                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split())} слов')
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
             messages=self.messages,
             max_tokens=3100
         )
@@ -28,14 +39,18 @@ class ChatGPT:
             self.starting_message,
             {"role": "assistant", "content": response["choices"][0]["message"].content}
         ]
-        print(self.messages)
+        logger.info(f'Длина расписания '
+                    f'- {len(self.messages[1]["content"].split())} слов')
         return response["choices"][0]["message"]['content']
 
     def gpt_get_recipes_and_shopping_list(self, timetable_message, recipes_message, shopping_list_message):
 
         self.messages.append({"role": "user", "content": recipes_message})
+        logger.info(self.messages[1])
+        logger.info(f'Длина промпта для рецептов '
+                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
         response = openai.ChatCompletion.create(
-            model="babbage-002",
+            model="gpt-3.5-turbo",
             messages=self.messages,
             max_tokens=1500
         )
@@ -44,10 +59,12 @@ class ChatGPT:
             self.starting_message,
             {"role": "assistant", "content": recipes}
         ]
-
+        logger.info(self.messages[1])
+        logger.info(f'Длина промпта для шоппинг листа и соответственно длина рецептов на понедельник'
+                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split())} слов')
         self.messages.append({"role": "user", "content": shopping_list_message})
         response = openai.ChatCompletion.create(
-            model="babbage-002",
+            model="gpt-3.5-turbo",
             messages=self.messages,
             max_tokens=1500
         )
@@ -59,12 +76,16 @@ class ChatGPT:
 
         shopping_list = response["choices"][0]["message"]['content']
 
+        logger.info(f'Длина шоппинг листа'
+                    f'- {len(shopping_list.split())} слов')
         return recipes, shopping_list
 
     def gpt_get_trainings(self, message):
         self.messages.append({"role": "user", "content": message})
+        logger.info(f'Длина промпта для тренировок '
+                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
         response = openai.ChatCompletion.create(
-            model="babbage-002",
+            model="gpt-3.5-turbo",
             messages=self.messages,
             max_tokens=1500
         )
@@ -73,6 +94,9 @@ class ChatGPT:
             self.starting_message,
             self.messages[1]
         ]
+        logger.info(response['choices'][0]['message']['content'])
+        logger.info(f'Длина тренировок на понедельник'
+                    f'- {len(response["choices"][0]["message"]["content"].split())} слов')
         return response["choices"][0]["message"]['content']
 
 
