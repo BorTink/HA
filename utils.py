@@ -1,6 +1,6 @@
 from loguru import logger
 
-from gpt.chat_upgraded import fill_prompt
+from gpt.chat import fill_prompt
 from app.states import TimetableDays
 import dal
 

@@ -2,35 +2,38 @@ import os
 import re
 
 from loguru import logger
-from gpt_index import SimpleDirectoryReader, GPTSimpleVectorIndex, LLMPredictor, PromptHelper
+from llama_index import SimpleDirectoryReader, VectorStoreIndex, LLMPredictor, PromptHelper, GPTVectorStoreIndex
 from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAIChat
+from langchain.llms import OpenAIChat, OpenAI
+import openai
 
 import dal
 import schemas
 
-os.environ["OPENAI_API_KEY"] = "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"
-
+os.environ["OPENAI_API_KEY"] = "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"
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class UpgradedChatBot:
     def __init__(self):
         self.index = None
         self.construct_index("/home/boris/TelegramBots/Health_AI/docs")
 
-
     def construct_index(self, directory_path):
         max_input_size = 4096
         num_outputs = 300
-        max_chunk_overlap = 20
+        max_chunk_overlap = 0.8
         chunk_size_limit = 500
 
         prompt_helper = PromptHelper(max_input_size, num_outputs, max_chunk_overlap, chunk_size_limit=chunk_size_limit)
 
-        llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0.7, model_name="gpt-3.5-turbo", max_tokens=4000))
+        llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0.7, model_name="gpt-4", max_tokens=2500))
 
         documents = SimpleDirectoryReader(directory_path).load_data()
 
-        self.index = GPTSimpleVectorIndex(documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper)
+        self.index = GPTVectorStoreIndex.from_documents(
+            documents, llm_predictor=llm_predictor, prompt_helper=prompt_helper
+        )
+        self.index = self.index.as_query_engine()
 
     def chatbot(self, input_text):
         logger.info(type(self.index))
@@ -43,55 +46,35 @@ class UpgradedChatBot:
 
 async def fill_prompt(prompt_data: schemas.PromptData):
     prompt_text = f"""
-Представь, что ты профессиональный тренер и нутрицолог. У тебя есть клиент, которому ты должен составить план питания и тренировок на каждый день недели (необходимо, чтобы на каждый день был разный план питания). Снизу есть данные клиента, на основе которых ты должен составить макимально унифицированный индивидуальный план тренировок и питания. Для тренировок обязательно подстраивай количество подходов и повторений под цель клиента, то есть, если набор мышечной массы, то нужно минимальное количество повторений (6-8) и тд. Разбей тренировки по группам мышц и начинай первую тренировку недели с верхней части тела. Также добавь примерное количество кг для каждого упражнения, учитывая средние способности при данных его анкеты и. Для плана питания рассчитай необходимое количество калорий для достижения цели и планируй питание в расчете на это. Выдай все в формате (если можешь сделать более лаконично и удобно, то откорректируй), не пиши "расчет калорий".:
+Представь, что ты профессиональный тренер и нутрицолог. У тебя есть клиент, которому ты должен составить план питания и тренировок на каждый день недели (необходимо, чтобы на каждый день был разный план питания). Снизу есть данные клиента, на основе которых ты должен составить макимально унифицированный индивидуальный план тренировок и питания. Для тренировок обязательно подстраивай количество подходов и повторений под цель клиента, то есть, если набор мышечной массы, то нужно минимальное количество повторений (6-8) и тд. Разбей тренировки по группам мышц и начинай первую тренировку недели с верхней части тела. Также добавь примерное количество кг для каждого упражнения, учитывая средние способности при данных его анкеты и. План питания планируй в расчете на цели клиента. Выдай все в таком формате:
 
-Пример (обязательно каждый день выделить отдельно):
 "Понедельник:
-
-Пиши "день тренировки", если она есть   (если ее нет в этот день, то "день отдыха", однако даже в день отдыха необходимо написать план питания) 
-
+"день тренировки" (если она есть, если тренировки в этот день нет, то "день отдыха")
 Тренировка:
-
 Приседания со штангой: ...
-
 Приемы пищи:
-
 Завтрак:
-
-Омлет ...
-
+...
 Обед: ... и тд. (смотри, сколько приемов пищи пишет клиент)”
+
+Нужно вывести расписание для каждого дня недели, нельзя объединять дни
 
 Анкета клиента:
 
 Пол - {prompt_data.sex}
-
 Возраст (полных лет) - {prompt_data.age}
-
 Рост (см) - {prompt_data.height}
-
 Вес (кг) - {prompt_data.weight}
-
 Есть ли хронические заболевания - {prompt_data.illnesses} 
-
 Уровень физической подготовки - {prompt_data.level_of_fitness}
-
 Основная цель - {prompt_data.goal}
-
 Желаемый результат через 3 месяца - {prompt_data.result} 
-
 Аллергии или избегаемые продукты - {prompt_data.allergy}
-
 Диеты - {prompt_data.diet}
-
 Предпочтительное количество приемов пищи - {prompt_data.number_of_meals}
-
 Количество дней в неделю готов уделять тренировкам - {prompt_data.trainings_per_week}
-
 Сколько готов уделять одной тренировке в среднем - {prompt_data.train_time_amount}
-
 Доступ в спортзалу - {prompt_data.gym_access}
-
 Если, нет доступа в зал, то какое есть оборудование - {prompt_data.gym_equipment}
 """
 
