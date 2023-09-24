@@ -6,12 +6,12 @@ from loguru import logger
 import dal
 import schemas
 
-openai.api_key = "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"
+openai.api_key = "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"
 
 
 class ChatGPT:
     def __init__(self):
-        openai.api_key = "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"
+        openai.api_key = "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"
         self.starting_message = {"role": "system", "content": "You can help with code"}
         self.messages = [
             self.starting_message

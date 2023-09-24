@@ -1,10 +1,8 @@
 import os
-import re
 
 from loguru import logger
-from llama_index import SimpleDirectoryReader, VectorStoreIndex, LLMPredictor, PromptHelper, GPTVectorStoreIndex
+from llama_index import SimpleDirectoryReader, LLMPredictor, PromptHelper, GPTVectorStoreIndex
 from langchain.chat_models import ChatOpenAI
-from langchain.llms import OpenAIChat, OpenAI
 import openai
 
 import dal
@@ -12,6 +10,7 @@ import schemas
 
 os.environ["OPENAI_API_KEY"] = "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"
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 class UpgradedChatBot:
     def __init__(self):
