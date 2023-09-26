@@ -31,7 +31,9 @@ async def start(message: types.Message, state: FSMContext):
     user = await dal.User.select_attributes(message.from_user.id)
     if user:
         await state.set_state(TimetableDays.monday)
-        await message.answer('Выберите действие', reply_markup=kb.main)
+        await message.answer('Выберите действие'
+                             ' (ВНИМАНИЕ: в этом прототипе на пересоздание расписания есть лишь 1 попытка)',
+                             reply_markup=kb.main)
     else:
         await message.answer(
             '👨‍💼 Привет! Это ваш виртуальный тренер от Health AI, персональный помощник на пути'
@@ -73,9 +75,17 @@ async def create_edit(callback: types.CallbackQuery):
 
 @dp.callback_query_handler(state='*', text='lookup_data')
 async def get_data(callback: types.CallbackQuery):
+    user = await dal.User.select_attributes(callback.from_user.id)
+    if user.attempts >= 2:
+        logger.error('Превышено кол-во попыток на пересоздание расписания')
+        await callback.message.answer(
+            'Количество попыток на пересоздание расписания в тестовой версии ограничено 1 попыткой,'
+            ' пересоздать расписание невозможно'
+        )
     logger.info(f'Составляется расписание для {callback.from_user.id}')
     await callback.message.answer(
-        f'Наш искусственный интелект составляет ваше расписание'
+        'Наш искусственный интеллект составляет вам расписание \n'
+        'Подождите несколько минут'
     )
     for attempt_number in range(3):
         try:
@@ -100,10 +110,10 @@ async def get_data(callback: types.CallbackQuery):
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     timetable = await dal.Timetable.get_timetable(callback.from_user.id)
     state_name = await state.get_state()
-    state_name = state_name.split(":")[1]
+    day_of_week = state_name.split(":")[1]
 
     await callback.message.answer(
-        f'Ваше расписание на {days_translation}:\n{eval(f"timetable.{state_name}")}',
+        f'Ваше расписание на {days_translation[day_of_week]}:\n{eval(f"timetable.{day_of_week}")}',
         reply_markup=kb.timetable
     )
 
@@ -134,7 +144,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
     timetable = await dal.Timetable.get_timetable(callback.from_user.id)
     await callback.message.answer(
-        f'Ваше расписание:\n{eval(f"timetable.{day_of_week}")}',
+        f'Ваше расписание на {days_translation[day_of_week]}:\n{eval(f"timetable.{day_of_week}")}',
         reply_markup=kb.timetable
     )
 
@@ -199,11 +209,11 @@ async def show_trainings(callback: types.CallbackQuery, state: FSMContext):
             f'На этот день тренировок нет.',
             reply_markup=kb.timetable
         )
-
-    await callback.message.answer(
-        f'Вот ваши тренировки на {days_translation[day_of_week]}:\n{trainings}',
-        reply_markup=kb.recipes
-    )
+    else:
+        await callback.message.answer(
+            f'Вот ваши тренировки на {days_translation[day_of_week]}:\n{trainings}',
+            reply_markup=kb.recipes
+        )
 
 
 @dp.callback_query_handler(state=PersonChars.sex)
@@ -445,7 +455,8 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
         await dal.User.add_attributes(state, callback.from_user.id)
         await state.finish()
         await callback.message.answer(
-            'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание'
+            'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
+            'Подождите несколько минут'
         )
 
         for attempt_number in range(3):
@@ -484,7 +495,8 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
 
     await state.finish()
     await message.answer(
-        'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание'
+        'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
+        'Подождите несколько минут'
     )
     for attempt_number in range(3):
         try:

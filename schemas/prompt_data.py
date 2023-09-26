@@ -18,6 +18,7 @@ class PromptData(BaseModel):
     train_time_amount: str
     gym_access: str
     gym_equipment: str
+    attempts: int
 
 
 class TimetableData(BaseModel):

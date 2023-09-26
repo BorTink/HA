@@ -30,7 +30,8 @@ class User:
                     trainings_per_week TEXT,
                     train_time_amount TEXT,
                     gym_access TEXT,
-                    gym_equipment TEXT
+                    gym_equipment TEXT,
+                    attempts INTEGER
                     )
                     """)
 
@@ -43,6 +44,9 @@ class User:
         user = await cls.select_attributes(user_id)
         async with state.proxy() as data:
             if user:
+                if user.attempts >= 2:
+                    logger.error(f'Превышено кол-во попыток на пересоздание расписания')
+                    return False
                 cur.execute(f"""
                     UPDATE users
                     SET
@@ -61,7 +65,8 @@ class User:
                     trainings_per_week = '{data['trainings_per_week']}',
                     train_time_amount = '{data['train_time_amount']}',
                     gym_access = '{data['gym_access']}',
-                    gym_equipment = '{data['gym_equipment']}'
+                    gym_equipment = '{data['gym_equipment']}',
+                    attempts = {user.attempts + 1}
                     WHERE tg_id = '{user_id}'
                 """)
                 db.commit()
@@ -85,7 +90,8 @@ class User:
                     trainings_per_week,
                     train_time_amount,
                     gym_access,
-                    gym_equipment
+                    gym_equipment,
+                    attempts
                     )
                     VALUES
                     (
@@ -105,11 +111,13 @@ class User:
                     '{data['trainings_per_week']}',
                     '{data['train_time_amount']}',
                     '{data['gym_access']}',
-                    '{data['gym_equipment']}'
+                    '{data['gym_equipment']}',
+                    1
                     )
                 """
                 cur.execute(query)
                 db.commit()
+            return True
 
     @classmethod
     async def get_user(cls, user_id):
@@ -144,7 +152,8 @@ class User:
                     trainings_per_week,
                     train_time_amount,
                     gym_access,
-                    gym_equipment
+                    gym_equipment,
+                    attempts
                 FROM users
                 WHERE tg_id = {user_id}
             """)
