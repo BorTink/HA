@@ -43,65 +43,53 @@ class ChatGPT:
                     f'- {len(self.messages[1]["content"].split())} слов')
         return response["choices"][0]["message"]['content']
 
-    def gpt_get_recipes_and_shopping_list(self, timetable_message, recipes_message, shopping_list_message):
-        self.messages = [
-            self.starting_message,
-            {'role': "assistant", 'content': timetable_message},
-            {"role": "user", "content": recipes_message}
-        ]
+    def gpt_get_recipes(self, timetable, recipes_message):
+        recipes = {}
+        for day, timetable_message in timetable.items():
+            self.messages = [
+                self.starting_message,
+                {'role': "assistant", 'content': timetable_message},
+                {"role": "user", "content": recipes_message}
+            ]
 
-        logger.info(self.messages[1])
-        logger.info(f'Длина промпта для рецептов '
-                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=self.messages,
-            max_tokens=1500
-        )
-        recipes = response["choices"][0]["message"]['content']
-        self.messages = [
-            self.starting_message,
-            {"role": "assistant", "content": recipes}
-        ]
-        logger.info(self.messages[1])
-        logger.info(f'Длина промпта для шоппинг листа и соответственно длина рецептов на понедельник'
-                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split())} слов')
-        self.messages.append({"role": "user", "content": shopping_list_message})
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=self.messages,
-            max_tokens=1500
-        )
-        print(self.messages)
-        self.messages = [
-            self.starting_message,
-            {'role': "assistant", 'content': timetable_message}
-        ]
+            logger.info(self.messages[1])
+            logger.info(f'Длина промпта для рецептов на {day}'
+                        f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=self.messages,
+                max_tokens=1500
+            )
+            recipes[f'{day}'] = (response["choices"][0]["message"]['content'])
 
-        shopping_list = response["choices"][0]["message"]['content']
+            logger.info(f'Длина рецептов на {day} '
+                        f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split())} слов')
+        return recipes
 
-        logger.info(f'Длина шоппинг листа'
-                    f'- {len(shopping_list.split())} слов')
-        return recipes, shopping_list
+    def gpt_get_trainings(self, timetable, prompt_trainings):
+        trainings = {}
+        for day, timetable_message in timetable.items():
+            if 'день тренировки' not in timetable_message:
+                continue
 
-    def gpt_get_trainings(self, message):
-        self.messages.append({"role": "user", "content": message})
-        logger.info(f'Длина промпта для тренировок '
-                    f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=self.messages,
-            max_tokens=1500
-        )
+            self.messages = [
+                self.starting_message,
+                {'role': "assistant", 'content': timetable_message},
+                {"role": "user", "content": prompt_trainings}
+            ]
+            self.messages.append({"role": "user", "content": prompt_trainings})
+            logger.info(f'Длина промпта для тренировок на {day} '
+                        f'- {len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split()) + len(self.messages[2]["content"].split())} слов')
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=self.messages,
+                max_tokens=1500
+            )
+            logger.info(f'Длина тренировок на {day}'
+                        f'- {len(response["choices"][0]["message"]["content"].split())} слов')
 
-        self.messages = [
-            self.starting_message,
-            self.messages[1]
-        ]
-        logger.info(response['choices'][0]['message']['content'])
-        logger.info(f'Длина тренировок на понедельник'
-                    f'- {len(response["choices"][0]["message"]["content"].split())} слов')
-        return response["choices"][0]["message"]['content']
+            trainings[f'{day}'] = (response["choices"][0]["message"]['content'])
+        return trainings
 
 
 async def fill_prompt(prompt_data: schemas.PromptData):
@@ -109,7 +97,8 @@ async def fill_prompt(prompt_data: schemas.PromptData):
     Представь, что ты профессиональный тренер и нутрицолог. У тебя есть клиент, которому ты должен составить план питания и тренировок на каждый день недели (необходимо, чтобы на каждый день был разный план питания). Снизу есть данные клиента, на основе которых ты должен составить макимально унифицированный индивидуальный план тренировок и питания. Для тренировок обязательно подстраивай количество подходов и повторений под цель клиента, то есть, если набор мышечной массы, то нужно минимальное количество повторений (6-8) и тд. Разбей тренировки по группам мышц и начинай первую тренировку недели с верхней части тела. Также добавь примерное количество кг для каждого упражнения, учитывая средние способности при данных его анкеты и. План питания планируй в расчете на цели клиента. Выдай все в таком формате:
 
     "Понедельник:
-    "день тренировки" (если она есть, если тренировки в этот день нет, то "день отдыха")
+    
+    ("день тренировки") (если она есть, если тренировки в этот день нет, то "день отдыха")
     Тренировка:
     Приседания со штангой: ...
     Приемы пищи:
@@ -160,13 +149,10 @@ async def fill_prompt(prompt_data: schemas.PromptData):
     prompt_trainings = f"""
 Напиши мне подробную текстовую инструкцию к тренировке, которую ты составил, если она есть. Не давай дополнительных комментариев
 """
-    prompt_shopping_list = f""" 
-Я хочу пойти в магазин, чтобы у меня были продукты на неделю. Чтобы следовать плану питания. Сделай мне шоппинг лист на неделю с продуктами, которые необходимо купить для составленного выше плана. Ранжируй продукты по категориям и времени хранения. По типу: хранятся 1-3 дня и тд. Для мяса напиши какой именно фрагмент тела надо купить. Не давай дополнительных комментариев
-"""
 
-    recipes, shopping_list = chat.gpt_get_recipes_and_shopping_list(timetable_dict['monday'], prompt_recipes, prompt_shopping_list)
+    recipes = chat.gpt_get_recipes(timetable_dict, prompt_recipes)
 
-    trainings = chat.gpt_get_trainings(prompt_trainings)
+    trainings = chat.gpt_get_trainings(timetable_dict, prompt_trainings)
 
-    return schemas.TimetableData(**timetable_dict), recipes, shopping_list, trainings
+    return schemas.TimetableData(**timetable_dict), recipes, trainings
 
