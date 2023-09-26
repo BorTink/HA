@@ -33,3 +33,34 @@ class TimetableDays(StatesGroup):
     friday = State()
     saturday = State()
     sunday = State()
+
+
+timetable_states_list = [
+    TimetableDays.monday,
+    TimetableDays.tuesday,
+    TimetableDays.wednesday,
+    TimetableDays.thursday,
+    TimetableDays.friday,
+    TimetableDays.saturday,
+    TimetableDays.sunday
+]
+
+timetable_states_str_list = [
+    'TimetableDays:monday',
+    'TimetableDays:tuesday',
+    'TimetableDays:wednesday',
+    'TimetableDays:thursday',
+    'TimetableDays:friday',
+    'TimetableDays:saturday',
+    'TimetableDays:sunday'
+]
+
+days_translation = {
+    'monday': 'понедельник',
+    'tuesday': 'вторник',
+    'wednesday': 'среду',
+    'thursday': 'четверг',
+    'friday': 'пятницу',
+    'saturday': 'субботу',
+    'sunday': 'воскресенье'
+}

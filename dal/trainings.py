@@ -26,11 +26,13 @@ class Trainings:
         SELECT id
         FROM trainings
         WHERE tg_id = {user_id}
+        AND day_of_week = {day_of_week}
         """)
         user = cur.fetchone()
 
         if user:
-            logger.debug(f'Тренировки пользователя {user_id} были найдены, происходит обновление тренировок')
+            logger.debug(f'Тренировки пользователя {user_id} на {day_of_week} были найдены,'
+                         f' происходит обновление тренировок')
             cur.execute(f"""
                     UPDATE trainings
                     SET
@@ -41,7 +43,7 @@ class Trainings:
             logger.info(f'Тренировки пользователя с id = {user_id} были обновлены.')
 
         else:
-            logger.debug(f'Тренировки пользователя с id = {user_id} не были найдены,'
+            logger.debug(f'Тренировки пользователя с id = {user_id} на {day_of_week} не были найдены,'
                          f' создаются новые тренировки.')
             cur.execute(f"""
                     INSERT INTO trainings

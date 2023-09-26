@@ -26,11 +26,13 @@ class Recipes:
         SELECT id
         FROM recipes
         WHERE tg_id = {user_id}
+        AND day_of_week = {day_of_week}
         """)
         user = cur.fetchone()
 
         if user:
-            logger.debug(f'Рецепты пользователя {user_id} были найдены, происходит обновление рецептов')
+            logger.debug(f'Рецепты пользователя {user_id} на {day_of_week} были найдены,'
+                         f' происходит обновление рецептов')
             cur.execute(f"""
                     UPDATE recipes
                     SET
@@ -41,7 +43,8 @@ class Recipes:
             logger.info(f'Рецепты пользователя с id = {user_id} были обновлены.')
 
         else:
-            logger.debug(f'Рецепты пользователя с id = {user_id} не были найдены, создаются новые рецепты.')
+            logger.debug(f'Рецепты пользователя с id = {user_id} на {day_of_week} не были найдены,'
+                         f' создаются новые рецепты.')
             cur.execute(f"""
                     INSERT INTO recipes
                     (tg_id, day_of_week, recipes_data)

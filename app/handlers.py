@@ -11,10 +11,9 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from utils import process_prompt
-from .states import PersonChars, TimetableDays, GPT
+from .states import PersonChars, timetable_states_list, timetable_states_str_list, TimetableDays, days_translation
 from app import keyboards as kb
 import dal
-from gpt.chat import ChatGPT
 from gpt.chat_upgraded import UpgradedChatBot
 
 load_dotenv()
@@ -31,6 +30,7 @@ async def start(message: types.Message, state: FSMContext):
 
     user = await dal.User.select_attributes(message.from_user.id)
     if user:
+        await state.set_state(TimetableDays.monday)
         await message.answer('Выберите действие', reply_markup=kb.main)
     else:
         await message.answer(
@@ -62,7 +62,7 @@ async def start(message: types.Message, state: FSMContext):
             'индивидуального плана (около 3 минут).”', reply_markup=kb.main_new)
 
 
-@dp.callback_query_handler(state=None, text=['update_data', 'insert_data'])
+@dp.callback_query_handler(state='*', text=['update_data', 'insert_data'])
 async def create_edit(callback: types.CallbackQuery):
     await callback.message.answer(
         'Укажите ваш пол (выберите в меню)',
@@ -71,11 +71,11 @@ async def create_edit(callback: types.CallbackQuery):
     await PersonChars.sex.set()
 
 
-@dp.callback_query_handler(state=None, text='lookup_data')
+@dp.callback_query_handler(state='*', text='lookup_data')
 async def get_data(callback: types.CallbackQuery):
-    logger.info(f'Формируется промпт для {callback.from_user.id}')
+    logger.info(f'Составляется расписание для {callback.from_user.id}')
     await callback.message.answer(
-        f'Формируется промпт'
+        f'Наш искусственный интелект составляет ваше расписание'
     )
     for attempt_number in range(3):
         try:
@@ -83,34 +83,63 @@ async def get_data(callback: types.CallbackQuery):
                 user_id=callback.from_user.id
             )
             await callback.message.answer(
-                f'Вот ваше расписание на понедельник:\n{timetable.monday}',
+                f'Ваше расписание на понедельник:\n{timetable.monday}',
                 reply_markup=kb.timetable
             )
+            break
         except Exception as exc:
             logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
             if attempt_number == 2:
-                await callback.message.answer(
-                    'При создании расписания произошла ошибка'
-                )
+                raise Exception
+                # await callback.message.answer(
+                #     'При создании расписания произошла ошибка'
+                # )
 
 
-@dp.callback_query_handler(state=None, text='SHOW_TIMETABLE')
-async def show_timetable(callback: types.CallbackQuery):
-    await TimetableDays.monday.set()
+@dp.callback_query_handler(state=timetable_states_list, text=['SHOW_TIMETABLE', 'back_to_timetable'])
+async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     timetable = await dal.Timetable.get_timetable(callback.from_user.id)
+    state_name = await state.get_state()
+    state_name = state_name.split(":")[1]
+
     await callback.message.answer(
-        f'Вот ваше расписание на понедельник:\n{timetable.monday}',
+        f'Ваше расписание на {days_translation}:\n{eval(f"timetable.{state_name}")}',
         reply_markup=kb.timetable
     )
 
 
-@dp.callback_query_handler(state=[TimetableDays.monday,
-                                  TimetableDays.tuesday,
-                                  TimetableDays.wednesday,
-                                  TimetableDays.thursday,
-                                  TimetableDays.friday,
-                                  TimetableDays.saturday,
-                                  TimetableDays.sunday],
+@dp.callback_query_handler(state=timetable_states_list, text=['show_next_day', 'show_prev_day'])
+async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
+    state_name = await state.get_state()
+    if callback.data == 'show_next_day':
+        state_index = timetable_states_str_list.index(state_name)
+        if state_index == len(timetable_states_str_list) - 1:
+            await state.set_state(TimetableDays.monday)
+            day_of_week = 'monday'
+        else:
+            day_of_week = timetable_states_str_list[state_index + 1].split(':')[1]
+            await state.set_state(eval(f'TimetableDays.{day_of_week}'))
+
+    elif callback.data == 'show_prev_day':
+        state_index = timetable_states_str_list.index(state_name)
+        if state_index == 0:
+            await state.set_state(TimetableDays.sunday)
+            day_of_week = 'sunday'
+        else:
+            day_of_week = timetable_states_str_list[state_index - 1].split(':')[1]
+            await state.set_state(eval(f'TimetableDays.{day_of_week}'))
+    else:
+        logger.error(f'Некорректная data в callback_query - {callback.data}')
+        raise Exception
+
+    timetable = await dal.Timetable.get_timetable(callback.from_user.id)
+    await callback.message.answer(
+        f'Ваше расписание:\n{eval(f"timetable.{day_of_week}")}',
+        reply_markup=kb.timetable
+    )
+
+
+@dp.callback_query_handler(state=timetable_states_list,
                            text='show_recipes')
 async def show_recipes(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
@@ -121,25 +150,19 @@ async def show_recipes(callback: types.CallbackQuery, state: FSMContext):
     day_of_week = current_state.split(':')[1]
     recipes = await dal.Recipes.get_recipes_by_day_of_week(callback.from_user.id, day_of_week)
 
-    while recipes is None:
+    if recipes is None:
         await callback.message.answer(
-            f'Получаем ваши рецепты...'
+            f'Рецептов на этот день нет.'
         )
         time.sleep(2)
 
     await callback.message.answer(
-        f'Вот ваши рецепты на {day_of_week}:\n{recipes}',
+        f'Вот ваши рецепты на {days_translation[day_of_week]}:\n{recipes}',
         reply_markup=kb.recipes
     )
 
 
-@dp.callback_query_handler(state=[TimetableDays.monday,
-                                  TimetableDays.tuesday,
-                                  TimetableDays.wednesday,
-                                  TimetableDays.thursday,
-                                  TimetableDays.friday,
-                                  TimetableDays.saturday,
-                                  TimetableDays.sunday],
+@dp.callback_query_handler(state=timetable_states_list,
                            text='show_shopping_list')
 async def show_shopping_list(callback: types.CallbackQuery):
     await callback.message.answer(
@@ -160,13 +183,7 @@ async def show_shopping_list(callback: types.CallbackQuery):
     )
 
 
-@dp.callback_query_handler(state=[TimetableDays.monday,
-                                  TimetableDays.tuesday,
-                                  TimetableDays.wednesday,
-                                  TimetableDays.thursday,
-                                  TimetableDays.friday,
-                                  TimetableDays.saturday,
-                                  TimetableDays.sunday],
+@dp.callback_query_handler(state=timetable_states_list,
                            text='show_trainings')
 async def show_trainings(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
@@ -177,33 +194,15 @@ async def show_trainings(callback: types.CallbackQuery, state: FSMContext):
     day_of_week = current_state.split(':')[1]
     trainings = await dal.Trainings.get_trainings_by_day_of_week(callback.from_user.id, day_of_week)
 
-    while trainings is None:
+    if trainings is None:
         await callback.message.answer(
-            f'Получаем ваши тренировки...'
+            f'На этот день тренировок нет.',
+            reply_markup=kb.timetable
         )
-        time.sleep(2)
 
     await callback.message.answer(
-        f'Вот ваши тренировки на {day_of_week}:\n{trainings}',
+        f'Вот ваши тренировки на {days_translation[day_of_week]}:\n{trainings}',
         reply_markup=kb.recipes
-    )
-
-
-@dp.callback_query_handler(state=[TimetableDays.monday,
-                                  TimetableDays.tuesday,
-                                  TimetableDays.wednesday,
-                                  TimetableDays.thursday,
-                                  TimetableDays.friday,
-                                  TimetableDays.saturday,
-                                  TimetableDays.sunday],
-                           text='back_to_timetable')
-@dp.callback_query_handler(state=None, text='SHOW_TIMETABLE')
-async def show_timetable(callback: types.CallbackQuery):
-    await TimetableDays.monday.set()
-    timetable = await dal.Timetable.get_timetable(callback.from_user.id)
-    await callback.message.answer(
-        f'Вот ваше расписание на понедельник:\n{timetable.monday}',
-        reply_markup=kb.timetable
     )
 
 
@@ -446,7 +445,7 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
         await dal.User.add_attributes(state, callback.from_user.id)
         await state.finish()
         await callback.message.answer(
-            'Ваши данные были внесены в базу, формируется промпт'
+            'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание'
         )
 
         for attempt_number in range(3):
@@ -458,6 +457,7 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
                     f'Вот ваше расписание на понедельник:\n{timetable.monday}',
                     reply_markup=kb.timetable
                 )
+                break
             except Exception as exc:
                 logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
                 if attempt_number == 2:
@@ -484,7 +484,7 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
 
     await state.finish()
     await message.answer(
-        'Ваши данные были внесены в базу.формируется промпт'
+        'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание'
     )
     for attempt_number in range(3):
         try:
@@ -495,6 +495,7 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
                 f'Вот ваше расписание на понедельник:\n{timetable.monday}',
                 reply_markup=kb.timetable
             )
+            break
         except Exception as exc:
             logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number+1}')
             if attempt_number == 2:
