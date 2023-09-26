@@ -26,7 +26,7 @@ class Trainings:
         SELECT id
         FROM trainings
         WHERE tg_id = {user_id}
-        AND day_of_week = {day_of_week}
+        AND day_of_week = '{day_of_week}'
         """)
         user = cur.fetchone()
 
