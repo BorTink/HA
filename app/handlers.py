@@ -64,8 +64,34 @@ async def start(message: types.Message, state: FSMContext):
             'индивидуального плана (около 3 минут).”', reply_markup=kb.main_new)
 
 
+@dp.callback_query_handler(state='*', text='back_to_menu')
+async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
+    if state:
+        await state.finish()
+
+    await state.set_state(TimetableDays.monday)
+    await callback.message.answer(
+        'Выберите действие'
+        ' (ВНИМАНИЕ: в этом прототипе на пересоздание расписания есть лишь 1 попытка)',
+        reply_markup=kb.main
+    )
+
+
 @dp.callback_query_handler(state='*', text=['update_data', 'insert_data'])
 async def create_edit(callback: types.CallbackQuery):
+
+    user = await dal.User.select_attributes(callback.from_user.id)
+    if user:
+        if user.attempts >= 2:
+            logger.error('Превышено кол-во попыток на пересоздание расписания')
+            await callback.message.answer(
+                'Количество попыток на создание расписания в тестовой версии ограничено 2 попытками,'
+                ' пересоздать расписание невозможно'
+            )
+            return None
+
+        await dal.User.increase_attempts_by_user_id(callback.from_user.id)
+
     await callback.message.answer(
         'Укажите ваш пол (выберите в меню)',
         reply_markup=kb.sex
@@ -458,6 +484,18 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
 
         await dal.User.add_attributes(state, callback.from_user.id)
         await state.finish()
+
+        user = await dal.User.select_attributes(callback.from_user.id)
+        if user.attempts >= 2:
+            logger.error('Превышено кол-во попыток на пересоздание расписания')
+            await callback.message.answer(
+                'Количество попыток на создание расписания в тестовой версии ограничено 2 попытками,'
+                ' пересоздать расписание невозможно'
+            )
+            return None
+
+        await dal.User.increase_attempts_by_user_id(callback.from_user.id)
+
         await callback.message.answer(
             'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
             'Подождите около 4 минут'
@@ -498,6 +536,18 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
     await dal.User.add_attributes(state, message.from_user.id)
 
     await state.finish()
+
+    user = await dal.User.select_attributes(message.from_user.id)
+    if user.attempts >= 2:
+        logger.error('Превышено кол-во попыток на пересоздание расписания')
+        await message.answer(
+            'Количество попыток на создание расписания в тестовой версии ограничено 2 попытками,'
+            ' пересоздать расписание невозможно'
+        )
+        return None
+
+    await dal.User.increase_attempts_by_user_id(message.from_user.id)
+
     await message.answer(
         'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
         'Подождите около 4 минут'
@@ -513,7 +563,7 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
             )
             break
         except Exception as exc:
-            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number+1}')
+            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
             if attempt_number == 2:
                 await message.answer(
                     'При создании расписания произошла ошибка'

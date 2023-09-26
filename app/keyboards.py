@@ -11,7 +11,8 @@ timetable_1 = InlineKeyboardButton('Показать рецепты', callback_d
 timetable_2 = InlineKeyboardButton('Показать тренировки', callback_data='show_trainings')
 timetable_4 = InlineKeyboardButton('Следующий день', callback_data='show_next_day')
 timetable_5 = InlineKeyboardButton('Предыдущий день', callback_data='show_prev_day')
-timetable.add(timetable_1).add(timetable_2).add(timetable_4, timetable_5)
+timetable_6 = InlineKeyboardButton('Вернуться в меню', callback_data='back_to_menu')
+timetable.add(timetable_1).add(timetable_2).add(timetable_4, timetable_5).add(timetable_6)
 
 recipes = InlineKeyboardMarkup(resize_keyboard=True)
 recipes_1 = InlineKeyboardButton('Вернуться к расписанию', callback_data='back_to_timetable')
