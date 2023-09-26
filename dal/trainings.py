@@ -39,6 +39,8 @@ class Trainings:
                     (tg_id, day_of_week, trainings_data)
                     =
                     ({user_id}, '{day_of_week}', '{trainings_data}')
+                    WHERE tg_id = {user_id}
+                    AND day_of_week = '{day_of_week}'
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были обновлены.')
 

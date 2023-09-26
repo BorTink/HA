@@ -39,6 +39,8 @@ class Recipes:
                     (tg_id, day_of_week, recipes_data)
                     =
                     ({user_id}, '{day_of_week}', '{recipes_data}')
+                    WHERE tg_id = {user_id}
+                    AND day_of_week = '{day_of_week}
                     """)
             logger.info(f'Рецепты пользователя с id = {user_id} были обновлены.')
 
