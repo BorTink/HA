@@ -79,13 +79,17 @@ async def get_data(callback: types.CallbackQuery):
     if user.attempts >= 2:
         logger.error('Превышено кол-во попыток на пересоздание расписания')
         await callback.message.answer(
-            'Количество попыток на пересоздание расписания в тестовой версии ограничено 1 попыткой,'
+            'Количество попыток на создание расписания в тестовой версии ограничено 2 попытками,'
             ' пересоздать расписание невозможно'
         )
+        return None
+
+    await dal.User.increase_attempts_by_user_id(callback.from_user.id)
+
     logger.info(f'Составляется расписание для {callback.from_user.id}')
     await callback.message.answer(
         'Наш искусственный интеллект составляет вам расписание \n'
-        'Подождите несколько минут'
+        'Подождите около 4 минут'
     )
     for attempt_number in range(3):
         try:
@@ -456,7 +460,7 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
         await state.finish()
         await callback.message.answer(
             'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
-            'Подождите несколько минут'
+            'Подождите около 4 минут'
         )
 
         for attempt_number in range(3):
@@ -496,7 +500,7 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer(
         'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
-        'Подождите несколько минут'
+        'Подождите около 4 минут'
     )
     for attempt_number in range(3):
         try:

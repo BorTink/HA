@@ -164,3 +164,24 @@ class User:
 
         user_info = schemas.PromptData(**dict(user_info))
         return user_info
+
+    @classmethod
+    async def increase_attempts_by_user_id(cls, user_id):
+        try:
+            cur.execute(f"""
+                UPDATE users
+                SET attempts = attempts + 1
+                WHERE tg_id = {user_id}
+                RETURNING attempts
+            """)
+            attempts = cur.fetchone()
+            if attempts is None:
+                logger.error(f'Попытки у пользователя с id = {user_id} не найдены')
+                raise Exception
+            logger.info(f'Количество попыток у пользователя с id = {user_id} увеличено до {attempts}')
+            db.commit()
+
+        except Exception as exc:
+            logger.error(f'При увеличении количества попыток у пользователя с id = {user_id} произошла ошибка: {exc}')
+            raise Exception
+
