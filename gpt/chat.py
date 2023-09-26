@@ -12,7 +12,8 @@ openai.api_key = "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"
 class ChatGPT:
     def __init__(self):
         openai.api_key = "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"
-        self.starting_message = {"role": "system", "content": "You can help with code"}
+        self.starting_message = {"role": "system", "content": "You are a gym training tutor bot designed to create meal"
+                                                              " and training plans"}
         self.messages = [
             self.starting_message
         ]
@@ -33,7 +34,7 @@ class ChatGPT:
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=self.messages,
-            max_tokens=3100
+            max_tokens=3500
         )
         self.messages = [
             self.starting_message,
@@ -41,6 +42,8 @@ class ChatGPT:
         ]
         logger.info(f'Длина расписания '
                     f'- {len(self.messages[1]["content"].split())} слов')
+        logger.info(f'Все расписание - {response["choices"][0]["message"]["content"]}')
+
         return response["choices"][0]["message"]['content']
 
     def gpt_get_recipes(self, timetable, recipes_message):
@@ -69,9 +72,6 @@ class ChatGPT:
     def gpt_get_trainings(self, timetable, prompt_trainings):
         trainings = {}
         for day, timetable_message in timetable.items():
-            if 'день тренировки' not in timetable_message.lower():
-                continue
-
             self.messages = [
                 self.starting_message,
                 {'role': "assistant", 'content': timetable_message},
@@ -96,16 +96,19 @@ async def fill_prompt(prompt_data: schemas.PromptData):
     prompt_text = f"""
     Представь, что ты профессиональный тренер и нутрицолог. У тебя есть клиент, которому ты должен составить план питания и тренировок на каждый день недели (необходимо, чтобы на каждый день был разный план питания). Снизу есть данные клиента, на основе которых ты должен составить макимально унифицированный индивидуальный план тренировок и питания. Для тренировок обязательно подстраивай количество подходов и повторений под цель клиента, то есть, если набор мышечной массы, то нужно минимальное количество повторений (6-8) и тд. Разбей тренировки по группам мышц и начинай первую тренировку недели с верхней части тела. Также добавь примерное количество кг для каждого упражнения, учитывая средние способности при данных его анкеты и. План питания планируй в расчете на цели клиента. Выдай все в таком формате:
 
-    "Понедельник("день тренировки") (если она есть, если тренировки в этот день нет, то "день отдыха")
+    "Понедельник:
+    
+    ("день тренировки") (если она есть, если тренировки в этот день нет, то "день отдыха")
     
     Тренировка:
     Приседания со штангой: ...
     Приемы пищи:
+    
     Завтрак:
     ...
     Обед: ... и тд. (смотри, сколько приемов пищи пишет клиент)”
 
-    Нужно вывести расписание для каждого дня недели, нельзя объединять дни
+    Нужно вывести расписание для каждого дня недели, нельзя объединять расписание для разных дней в одно, особенно субботу и воскресенье
 
     Анкета клиента:
 
@@ -128,7 +131,7 @@ async def fill_prompt(prompt_data: schemas.PromptData):
 
     chat = ChatGPT()
 
-    timetable = chat.gpt_create_timetable(prompt_text)
+    timetable = chat.gpt_create_timetable(prompt_text).replace(':\n\n', '')
 
     timetable_list = re.split(
         'Понедельник|Вторник|Среда|Четверг|Пятница|Суббота|Воскресенье', timetable)
@@ -142,6 +145,19 @@ async def fill_prompt(prompt_data: schemas.PromptData):
         'sunday': timetable_list[7],
     }
 
+    meals_dict = {}
+    trainings_dict = {}
+
+    for day, timetable_message in timetable_dict.items():
+        item_temp = timetable_message.split('Приемы пищи')
+        meals = item_temp[1]
+        meals_dict[day] = meals
+
+        if 'Тренировка' in timetable_message:
+            item_temp = item_temp[0].split('Тренировка')
+            trainings = item_temp[1]
+            trainings_dict[day] = trainings
+
     prompt_recipes = f"""
 Напиши мне подробные рецепты для приемов пищи, которые ты составил. Не давай дополнительных комментариев
 """
@@ -149,9 +165,9 @@ async def fill_prompt(prompt_data: schemas.PromptData):
 Напиши мне подробную текстовую инструкцию к тренировке, которую ты составил, если она есть. Не давай дополнительных комментариев
 """
 
-    recipes = chat.gpt_get_recipes(timetable_dict, prompt_recipes)
+    recipes = chat.gpt_get_recipes(meals_dict, prompt_recipes)
 
-    trainings = chat.gpt_get_trainings(timetable_dict, prompt_trainings)
+    trainings = chat.gpt_get_trainings(trainings_dict, prompt_trainings)
 
     return schemas.TimetableData(**timetable_dict), recipes, trainings
 
