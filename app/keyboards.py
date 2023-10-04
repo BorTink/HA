@@ -1,4 +1,8 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+
+always_markup = ReplyKeyboardMarkup(resize_keyboard=True)
+always_markup_1 = KeyboardButton('Купить подписку')
+always_markup.add(always_markup_1)
 
 main = InlineKeyboardMarkup(resize_keyboard=True)
 main_1 = InlineKeyboardButton('Повторно составить расписание', callback_data='lookup_data')

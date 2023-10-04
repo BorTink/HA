@@ -31,6 +31,7 @@ async def start(message: types.Message, state: FSMContext):
     user = await dal.User.select_attributes(message.from_user.id)
     if user:
         await state.set_state(TimetableDays.monday)
+        await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
         await message.answer('Выберите действие'
                              ' (ВНИМАНИЕ: в этом прототипе на пересоздание расписания есть лишь 1 попытка)',
                              reply_markup=kb.main)
@@ -62,6 +63,11 @@ async def start(message: types.Message, state: FSMContext):
         await message.answer(
             '👨“Пожалуйста, ответьте на пару вопросов для составления вашего '
             'индивидуального плана (около 3 минут).”', reply_markup=kb.main_new)
+
+
+@dp.message_handler(state='*', text='Купить подписку')
+async def buy_subscription(message: types.Message, state: FSMContext):
+    if
 
 
 @dp.callback_query_handler(state='*', text='back_to_menu')
