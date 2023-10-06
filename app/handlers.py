@@ -15,6 +15,7 @@ from .states import PersonChars, timetable_states_list, timetable_states_str_lis
 from app import keyboards as kb
 import dal
 from gpt.chat_upgraded import UpgradedChatBot
+from gpt.chat import ChatGPT
 
 load_dotenv()
 bot = Bot(os.getenv('TOKEN'))
@@ -570,16 +571,31 @@ async def add_gym_equipment(message: types.Message, state: FSMContext):
                 )
 
 
+### ВЕРСИЯ ЧАТА С ДООБУЧЕНИЕМ
+
+# @dp.message_handler(state='*')
+# async def answer(message: types.Message, state: FSMContext):
+#     global gpt_bot
+#     try:
+#         print(type(gpt_bot))
+#     except Exception:
+#         gpt_bot = UpgradedChatBot()
+#
+#     await message.reply('Сейчас..')
+#     text = message.text
+#     reply = gpt_bot.chatbot(text)
+#
+#     await message.reply(reply)
+
+
 @dp.message_handler(state='*')
-async def answer(message: types.Message, state: FSMContext):
-    global gpt_bot
+async def answer(message: types.Message):
     try:
-        print(type(gpt_bot))
-    except Exception:
-        gpt_bot = UpgradedChatBot()
-
-    await message.reply('Сейчас..')
-    text = message.text
-    reply = gpt_bot.chatbot(text)
-
-    await message.reply(reply)
+        await message.reply('Сейчас..')
+        logger.info(f'Сообщение - {message.text}')
+        reply = ChatGPT().chat(message.text)
+        logger.info(f'Ответ - {reply}')
+        await message.reply(reply)
+    except Exception as exc:
+        logger.info(f'Ошибка - {exc}')
+        await message.reply(f'При генерации ответа произошла ошибка - {exc}')

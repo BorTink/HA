@@ -11,7 +11,7 @@ class Trainings:
         global db
         global cur
         db, cur = await User.get_db_cur()
-        cur.execute("""
+        await cur.execute("""
                     CREATE TABLE IF NOT EXISTS trainings(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     tg_id TEXT,
@@ -22,18 +22,18 @@ class Trainings:
 
     @classmethod
     async def update_trainings(cls, user_id, day_of_week, trainings_data):
-        cur.execute(f"""
+        await cur.execute(f"""
         SELECT id
         FROM trainings
         WHERE tg_id = {user_id}
         AND day_of_week = '{day_of_week}'
         """)
-        user = cur.fetchone()
+        user = await cur.fetchone()
 
         if user:
             logger.debug(f'Тренировки пользователя {user_id} на {day_of_week} были найдены,'
                          f' происходит обновление тренировок')
-            cur.execute(f"""
+            await cur.execute(f"""
                     UPDATE trainings
                     SET
                     (tg_id, day_of_week, trainings_data)
@@ -47,7 +47,7 @@ class Trainings:
         else:
             logger.debug(f'Тренировки пользователя с id = {user_id} на {day_of_week} не были найдены,'
                          f' создаются новые тренировки.')
-            cur.execute(f"""
+            await cur.execute(f"""
                     INSERT INTO trainings
                     (tg_id, day_of_week, trainings_data)
                     VALUES
@@ -55,17 +55,17 @@ class Trainings:
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были созданы.')
 
-        db.commit()
+        await db.commit()
 
     @classmethod
     async def get_trainings_by_day_of_week(cls, user_id, day_of_week):
-        cur.execute(f"""
+        await cur.execute(f"""
             SELECT tg_id, day_of_week, trainings_data
             FROM trainings
             WHERE tg_id = {user_id}
             AND day_of_week = '{day_of_week}'
             """)
-        trainings = cur.fetchone()
+        trainings = await cur.fetchone()
         if trainings:
             return dict(trainings)['trainings_data']
         else:
