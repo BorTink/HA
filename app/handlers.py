@@ -30,6 +30,8 @@ async def start(message: types.Message, state: FSMContext):
         await state.finish()
 
     user = await dal.User.select_attributes(message.from_user.id)
+    logger.info(f'user - {user}')
+
     if user:
         await state.set_state(TimetableDays.monday)
         await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
@@ -540,6 +542,7 @@ async def add_gym_access(callback: types.CallbackQuery, state: FSMContext):
 async def add_gym_equipment(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['gym_equipment'] = message.text
+        logger.info(f'data - {data}')
     await dal.User.add_attributes(state, message.from_user.id)
 
     await state.finish()
