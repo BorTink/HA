@@ -66,10 +66,10 @@ async def start(message: types.Message, state: FSMContext):
             'индивидуального плана (около 3 минут).”', reply_markup=kb.main_new)
 
 
-@dp.message_handler(state='*', text='Купить подписку')
-async def buy_subscription(message: types.Message, state: FSMContext):
-    if
-
+# @dp.message_handler(state='*', text='Купить подписку')
+# async def buy_subscription(message: types.Message, state: FSMContext):
+#     if
+#
 
 @dp.callback_query_handler(state='*', text='back_to_menu')
 async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
