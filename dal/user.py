@@ -1,5 +1,5 @@
 from loguru import logger
-import sqlite3 as sq
+import aiosqlite as sq
 
 import schemas
 
@@ -8,10 +8,14 @@ class User:
     @classmethod
     async def db_start(cls):
         global db, cur
-        db = sq.connect('tg.db')
+        db = await sq.connect('tg.db')
         db.row_factory = sq.Row
-        cur = db.cursor()
-        cur.execute(""" 
+        cur = await db.cursor()
+
+        logger.info(cur)
+        logger.info(type(cur))
+
+        await cur.execute(""" 
                     CREATE TABLE IF NOT EXISTS users(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     tg_id TEXT, 
@@ -47,7 +51,7 @@ class User:
                 if user.attempts >= 2:
                     logger.error(f'Превышено кол-во попыток на пересоздание расписания')
                     return False
-                cur.execute(f"""
+                await cur.execute(f"""
                     UPDATE users
                     SET
                     sex = '{data['sex']}',
@@ -69,7 +73,7 @@ class User:
                     attempts = {user.attempts + 1}
                     WHERE tg_id = '{user_id}'
                 """)
-                db.commit()
+                await db.commit()
             else:
                 query = f"""
                     INSERT INTO users
@@ -115,18 +119,18 @@ class User:
                     1
                     )
                 """
-                cur.execute(query)
-                db.commit()
+                await cur.execute(query)
+                await db.commit()
             return True
 
     @classmethod
     async def get_user(cls, user_id):
-        cur.execute(f"""
+        await cur.execute(f"""
                     SELECT *
                     FROM users
                     WHERE tg_id = {user_id}
                 """)
-        user_info = cur.fetchone()
+        user_info = await cur.fetchone()
         if user_info is None:
             logger.debug(f'Пользователя с id = {user_id} не существует')
             return None
@@ -135,7 +139,7 @@ class User:
 
     @classmethod
     async def select_attributes(cls, user_id):
-        cur.execute(f"""
+        await cur.execute(f"""
                 SELECT 
                     sex,
                     age,
@@ -157,7 +161,7 @@ class User:
                 FROM users
                 WHERE tg_id = {user_id}
             """)
-        user_info = cur.fetchone()
+        user_info = await cur.fetchone()
         if user_info is None:
             logger.debug(f'Пользователя с id = {user_id} не существует')
             return None
@@ -168,18 +172,18 @@ class User:
     @classmethod
     async def increase_attempts_by_user_id(cls, user_id):
         try:
-            cur.execute(f"""
+            await cur.execute(f"""
                 UPDATE users
                 SET attempts = attempts + 1
                 WHERE tg_id = {user_id}
                 RETURNING attempts
             """)
-            attempts = cur.fetchone()
+            attempts = await cur.fetchone()
             if attempts is None:
                 logger.error(f'Попытки у пользователя с id = {user_id} не найдены')
                 raise Exception
             logger.info(f'Количество попыток у пользователя с id = {user_id} увеличено до {attempts}')
-            db.commit()
+            await db.commit()
 
         except Exception as exc:
             logger.error(f'При увеличении количества попыток у пользователя с id = {user_id} произошла ошибка: {exc}')

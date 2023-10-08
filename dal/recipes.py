@@ -11,7 +11,7 @@ class Recipes:
         global db
         global cur
         db, cur = await User.get_db_cur()
-        cur.execute("""
+        await cur.execute("""
                     CREATE TABLE IF NOT EXISTS recipes(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     tg_id TEXT,
@@ -22,18 +22,18 @@ class Recipes:
 
     @classmethod
     async def update_recipes(cls, user_id, day_of_week, recipes_data):
-        cur.execute(f"""
+        await cur.execute(f"""
         SELECT id
         FROM recipes
         WHERE tg_id = {user_id}
         AND day_of_week = '{day_of_week}'
         """)
-        user = cur.fetchone()
+        user = await cur.fetchone()
 
         if user:
             logger.debug(f'Рецепты пользователя {user_id} на {day_of_week} были найдены,'
                          f' происходит обновление рецептов')
-            cur.execute(f"""
+            await cur.execute(f"""
                     UPDATE recipes
                     SET
                     (tg_id, day_of_week, recipes_data)
@@ -47,7 +47,7 @@ class Recipes:
         else:
             logger.debug(f'Рецепты пользователя с id = {user_id} на {day_of_week} не были найдены,'
                          f' создаются новые рецепты.')
-            cur.execute(f"""
+            await cur.execute(f"""
                     INSERT INTO recipes
                     (tg_id, day_of_week, recipes_data)
                     VALUES
@@ -55,17 +55,17 @@ class Recipes:
                     """)
             logger.info(f'Рецепты пользователя с id = {user_id} были созданы.')
 
-        db.commit()
+        await db.commit()
 
     @classmethod
     async def get_recipes_by_day_of_week(cls, user_id, day_of_week):
-        cur.execute(f"""
+        await cur.execute(f"""
             SELECT tg_id, day_of_week, recipes_data
             FROM recipes
             WHERE tg_id = {user_id}
             AND day_of_week = '{day_of_week}'
             """)
-        recipes = cur.fetchone()
+        recipes = await cur.fetchone()
         if recipes:
             return dict(recipes)['recipes_data']
         else:
