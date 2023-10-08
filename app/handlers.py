@@ -6,6 +6,7 @@ from aiogram import Dispatcher, types, Bot
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
+from aiogram.types.message import ContentType
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -22,6 +23,7 @@ bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot=bot, storage=MemoryStorage())  # storage впоследствии изменить на redis
 dp.middleware.setup(LoggingMiddleware())
 
+PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=500*100)
 
 @dp.message_handler(state='*', commands=['start'])
 async def start(message: types.Message, state: FSMContext):
@@ -67,7 +69,36 @@ async def start(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state='*', text='Купить подписку')
 async def buy_subscription(message: types.Message, state: FSMContext):
-    if
+    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
+        await message.answer('Тестовый платеж!')
+
+    await bot.send_invoice(message.chat.id,
+                           title='Подписка на бота',
+                           description='Подписка на бота на 1 месяц',
+                           provider_token=os.getenv('PAYMENTS_TOKEN'),
+                           currency='rub',
+                           photo_url='https://img.freepik.com/premium-photo/this-sleek-minimalist-home-gym-features-floortoceiling-windows-that-allow-abundant-natural-light-illuminate-space-generated-by-ai_661108-5016.jpg',
+                           photo_width=1270,
+                           is_flexible=False,
+                           prices=[PRICE],
+                           start_parameter='one-month-subscription',
+                           payload='test-invoice-payload')
+
+
+@dp.pre_checkout_query_handler(lambda query: True)
+async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
+    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True)
+
+
+@dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
+async def successful_payment(message: types.Message):
+    logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно')
+    payment_info = message.successful_payment.to_python()
+    for k, v in payment_info.items():
+        logger.info(f'{k} - {v}')
+
+    await message.answer(f'Платеж на сумму {message.successful_payment.total_amount // 100} '
+                         f'{message.successful_payment.currency} прошел успешно')
 
 
 @dp.callback_query_handler(state='*', text='back_to_menu')
