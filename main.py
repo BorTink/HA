@@ -13,7 +13,7 @@ async def on_startup(_):
     await dal.Recipes.create_recipes()
     await dal.ShoppingList.create_shopping_list()
     await dal.Trainings.create_trainings()
-    print('Бот успешно запущен!')
+    logger.info(f'Бот успешно запущен!')
 
 
 if __name__ == '__main__':
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     logger.add(
         LOG_FILE_NAME,
         level='DEBUG',
-        rotation='30 MB',
+        rotation='3 MB',
 
         backtrace=False,
         catch=False,

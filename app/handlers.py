@@ -26,11 +26,12 @@ dp.middleware.setup(LoggingMiddleware())
 
 PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=500*100)
 
+
 @dp.message_handler(state='*', commands=['start'])
 async def start(message: types.Message, state: FSMContext):
     if state:
         await state.finish()
-
+    logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
     logger.info(f'user - {user}')
 
