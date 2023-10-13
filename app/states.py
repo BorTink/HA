@@ -2,23 +2,19 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 
 class PersonChars(StatesGroup):
-    sex = State()
+    gender = State()
     age = State()
     height = State()
     weight = State()
-    illnesses = State()
-    drugs = State()
-    level_of_fitness = State()
+    gym_experience = State()
     goal = State()
-    result = State()
-    allergy = State()
-    diet = State()
-    number_of_meals = State()
-    trainings_per_week = State()
-    train_time_amount = State()
-    gym_access = State()
-    gym_access_YES = State()
-    gym_access_NO = State()
+    time_to_reach = State()
+    intensity = State()
+    times_per_week = State()
+    health_restrictions = State()
+    squats_results = State()
+    bench_results = State()
+    deadlift_results = State()
 
 
 class GPT(StatesGroup):
