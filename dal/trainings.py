@@ -14,18 +14,20 @@ class Trainings:
         await cur.execute("""
                     CREATE TABLE IF NOT EXISTS trainings(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    tg_id TEXT,
+                    user_id INT,
                     day_of_week TEXT,
-                    trainings_data TEXT
+                    iteration INT,
+                    data TEXT,
+                    goal_time_period INT DEFAULT 10
                     )
                     """)
 
     @classmethod
-    async def update_trainings(cls, user_id, day_of_week, trainings_data):
+    async def update_trainings(cls, user_id, day_of_week, iteration, data, goal_time_period):
         await cur.execute(f"""
         SELECT id
         FROM trainings
-        WHERE tg_id = {user_id}
+        WHERE user_id = {user_id}
         AND day_of_week = '{day_of_week}'
         """)
         user = await cur.fetchone()
@@ -36,10 +38,14 @@ class Trainings:
             await cur.execute(f"""
                     UPDATE trainings
                     SET
-                    (tg_id, day_of_week, trainings_data)
+                    (
+                    user_id, day_of_week, iteration, data, goal_time_period
+                    )
                     =
-                    ({user_id}, '{day_of_week}', '{trainings_data}')
-                    WHERE tg_id = {user_id}
+                    (
+                    {user_id}, '{day_of_week}', {iteration}, '{data}', {goal_time_period}
+                    )
+                    WHERE user_id = {user_id}
                     AND day_of_week = '{day_of_week}'
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были обновлены.')
@@ -49,9 +55,13 @@ class Trainings:
                          f' создаются новые тренировки.')
             await cur.execute(f"""
                     INSERT INTO trainings
-                    (tg_id, day_of_week, trainings_data)
+                    (
+                    user_id, day_of_week, iteration, data, goal_time_period
+                    )
                     VALUES
-                    ({user_id}, '{day_of_week}', '{trainings_data}')
+                    (
+                    {user_id}, '{day_of_week}', {iteration}, '{data}', {goal_time_period}
+                    )
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были созданы.')
 
@@ -60,13 +70,11 @@ class Trainings:
     @classmethod
     async def get_trainings_by_day_of_week(cls, user_id, day_of_week):
         await cur.execute(f"""
-            SELECT tg_id, day_of_week, trainings_data
+            SELECT data
             FROM trainings
-            WHERE tg_id = {user_id}
+            WHERE user_id = {user_id}
             AND day_of_week = '{day_of_week}'
             """)
         trainings = await cur.fetchone()
-        if trainings:
-            return dict(trainings)['trainings_data']
-        else:
-            return None
+
+        return trainings if trainings else None
