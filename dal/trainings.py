@@ -1,8 +1,6 @@
 from loguru import logger
-import sqlite3 as sq
 
 from dal.user import User
-import schemas
 
 
 class Trainings:
