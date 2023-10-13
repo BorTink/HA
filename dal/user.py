@@ -18,24 +18,20 @@ class User:
         await cur.execute(""" 
                     CREATE TABLE IF NOT EXISTS users(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    tg_id TEXT, 
-                    sex TEXT,
+                    tg_id INTEGER, 
+                    gender TEXT,
                     age TEXT,
                     height TEXT,
                     weight TEXT,
-                    illnesses TEXT,
-                    drugs TEXT,
-                    level_of_fitness TEXT,
+                    gym_experience TEXT,
                     goal TEXT,
-                    result TEXT,
-                    allergy TEXT,
-                    diet TEXT,
-                    number_of_meals TEXT,
-                    trainings_per_week TEXT,
-                    train_time_amount TEXT,
-                    gym_access TEXT,
-                    gym_equipment TEXT,
-                    attempts INTEGER
+                    time_to_reach INTEGER,
+                    intensity TEXT,
+                    times_per_week INTEGER,
+                    health_restrictions TEXT,
+                    squats_results TEXT,
+                    bench_results TEXT,
+                    deadlift_results TEXT
                     )
                     """)
 
@@ -54,23 +50,19 @@ class User:
                 await cur.execute(f"""
                     UPDATE users
                     SET
-                    sex = '{data['sex']}',
+                    gender = '{data['gender']}',
                     age = '{data['age']}',
                     height = '{data['height']}',
                     weight = '{data['weight']}',
-                    illnesses = '{data['illnesses']}',
-                    drugs = '{data['drugs']}',
-                    level_of_fitness = '{data['level_of_fitness']}',
+                    gym_experience = '{data['gym_experience']}',
                     goal = '{data['goal']}',
-                    result = '{data['result']}',
-                    allergy = '{data['allergy']}',
-                    diet = '{data['diet']}',
-                    number_of_meals = '{data['number_of_meals']}',
-                    trainings_per_week = '{data['trainings_per_week']}',
-                    train_time_amount = '{data['train_time_amount']}',
-                    gym_access = '{data['gym_access']}',
-                    gym_equipment = '{data['gym_equipment']}',
-                    attempts = {user.attempts + 1}
+                    time_to_reach = '{data['time_to_reach']}',
+                    intensity = '{data['intensity']}',
+                    times_per_week = '{data['times_per_week']}',
+                    health_restrictions = '{data['health_restrictions']}',
+                    squats_results = '{data['squats_results']}',
+                    bench_results = '{data['bench_results']}',
+                    deadlift_results = '{data['deadlift_results']}'
                     WHERE tg_id = '{user_id}'
                 """)
                 await db.commit()
@@ -79,44 +71,36 @@ class User:
                     INSERT INTO users
                     (
                     tg_id,
-                    sex,
+                    gender,
                     age,
                     height,
                     weight,
-                    illnesses,
-                    drugs,
-                    level_of_fitness,
+                    gym_experience,
                     goal,
-                    result,
-                    allergy,
-                    diet,
-                    number_of_meals,
-                    trainings_per_week,
-                    train_time_amount,
-                    gym_access,
-                    gym_equipment,
-                    attempts
+                    time_to_reach,
+                    intensity,
+                    times_per_week,
+                    health_restrictions,
+                    squats_results,
+                    bench_results,
+                    deadlift_results
                     )
                     VALUES
                     (
                     {user_id},
-                    '{data['sex']}',
+                    '{data['gender']}',
                     '{data['age']}',
                     '{data['height']}',
                     '{data['weight']}',
-                    '{data['illnesses']}',
-                    '{data['drugs']}',
-                    '{data['level_of_fitness']}',
+                    '{data['gym_experience']}',
                     '{data['goal']}',
-                    '{data['result']}',
-                    '{data['allergy']}',
-                    '{data['diet']}',
-                    '{data['number_of_meals']}',
-                    '{data['trainings_per_week']}',
-                    '{data['train_time_amount']}',
-                    '{data['gym_access']}',
-                    '{data['gym_equipment']}',
-                    1
+                    '{data['time_to_reach']}',
+                    '{data['intensity']}',
+                    '{data['times_per_week']},
+                    '{data['health_restrictions']}',
+                    '{data['squats_results']}',
+                    '{data['bench_results']}',
+                    '{data['deadlift_results']}'
                     )
                 """
                 await cur.execute(query)
@@ -140,24 +124,7 @@ class User:
     @classmethod
     async def select_attributes(cls, user_id):
         await cur.execute(f"""
-                SELECT 
-                    sex,
-                    age,
-                    height,
-                    weight,
-                    illnesses,
-                    drugs,
-                    level_of_fitness,
-                    goal,
-                    result,
-                    allergy,
-                    diet,
-                    number_of_meals,
-                    trainings_per_week,
-                    train_time_amount,
-                    gym_access,
-                    gym_equipment,
-                    attempts
+                SELECT *
                 FROM users
                 WHERE tg_id = {user_id}
             """)
