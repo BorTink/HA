@@ -45,9 +45,6 @@ class User:
         user = await cls.select_attributes(user_id)
         async with state.proxy() as data:
             if user:
-                if user.attempts >= 2:
-                    logger.error(f'Превышено кол-во попыток на пересоздание расписания')
-                    return False
                 await cur.execute(f"""
                     UPDATE users
                     SET
@@ -82,12 +79,12 @@ class User:
                     
                     squats_results,
                     bench_results,
-                    deadlift_results
+                    deadlift_results,
                     
                     goals,
                     intensity,
                     health_restrictions,
-                    times_per_week,
+                    times_per_week
                     
                     )
                     VALUES
@@ -106,7 +103,7 @@ class User:
                     '{data['goals']}',
                     '{data['intensity']}',
                     '{data['health_restrictions']}',
-                    '{data['times_per_week']}
+                    '{data['times_per_week']}'
                     )
                 """
                 await cur.execute(query)

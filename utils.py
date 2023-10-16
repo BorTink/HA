@@ -10,12 +10,12 @@ async def process_prompt(user_id):
     data = await dal.User.select_attributes(user_id)
 
     trainings = await fill_prompt(data)
-    for i in trainings:
+    for i, training in enumerate(trainings):
         await dal.Trainings.update_trainings(
             user_id=user_id,
             day=i+1,
-            data=trainings[i],
-            is_rest=True if trainings[i] == 'Отдых' else False
+            data=training,
+            is_rest=True if training == 'Отдых' else False
         )
 
     return trainings
