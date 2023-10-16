@@ -10,8 +10,8 @@ import dal
 async def on_startup(_):
     await dal.User.db_start()
     await dal.Timetable.create_timetable()
-    await dal.Recipes.create_recipes()
-    await dal.ShoppingList.create_shopping_list()
+    await dal.Exercises.create_exercises()
+    await dal.UserResults.create_user_results()
     await dal.Trainings.create_trainings()
     logger.info(f'Бот успешно запущен!')
 

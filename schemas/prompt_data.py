@@ -8,14 +8,15 @@ class PromptData(BaseModel):
     height: int
     weight: int
     gym_experience: str
-    goal: str
-    time_to_reach: int
-    intensity: str
-    times_per_week: int
-    health_restrictions: str
+
     squats_results: str
     bench_results: str
     deadlift_results: str
+
+    goals: str
+    intensity: str
+    health_restrictions: str
+    times_per_week: int
 
 
 class TimetableData(BaseModel):

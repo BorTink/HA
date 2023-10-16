@@ -24,14 +24,15 @@ class User:
                     height INTEGER,
                     weight INTEGER,
                     gym_experience TEXT,
-                    goal TEXT,
-                    time_to_reach INTEGER,
+                    
+                    bench_results INTEGER,
+                    deadlift_results INTEGER,
+                    squats_results INTEGER,
+                    
+                    goals TEXT,
                     intensity TEXT,
-                    times_per_week INTEGER,
                     health_restrictions TEXT,
-                    squats_results TEXT,
-                    bench_results TEXT,
-                    deadlift_results TEXT
+                    times_per_week INTEGER
                     )
                     """)
 
@@ -55,14 +56,16 @@ class User:
                     height = '{data['height']}',
                     weight = '{data['weight']}',
                     gym_experience = '{data['gym_experience']}',
-                    goal = '{data['goal']}',
-                    time_to_reach = '{data['time_to_reach']}',
-                    intensity = '{data['intensity']}',
-                    times_per_week = '{data['times_per_week']}',
-                    health_restrictions = '{data['health_restrictions']}',
+                    
                     squats_results = '{data['squats_results']}',
                     bench_results = '{data['bench_results']}',
-                    deadlift_results = '{data['deadlift_results']}'
+                    deadlift_results = '{data['deadlift_results']}',
+                    
+                    goals = '{data['goals']}',
+                    intensity = '{data['intensity']}',
+                    health_restrictions = '{data['health_restrictions']}',
+                    times_per_week = '{data['times_per_week']}'
+                    
                     WHERE tg_id = '{user_id}'
                 """)
                 await db.commit()
@@ -76,14 +79,16 @@ class User:
                     height,
                     weight,
                     gym_experience,
-                    goal,
-                    time_to_reach,
-                    intensity,
-                    times_per_week,
-                    health_restrictions,
+                    
                     squats_results,
                     bench_results,
                     deadlift_results
+                    
+                    goals,
+                    intensity,
+                    health_restrictions,
+                    times_per_week,
+                    
                     )
                     VALUES
                     (
@@ -93,14 +98,15 @@ class User:
                     '{data['height']}',
                     '{data['weight']}',
                     '{data['gym_experience']}',
-                    '{data['goal']}',
-                    '{data['time_to_reach']}',
-                    '{data['intensity']}',
-                    '{data['times_per_week']},
-                    '{data['health_restrictions']}',
+                    
                     '{data['squats_results']}',
                     '{data['bench_results']}',
-                    '{data['deadlift_results']}'
+                    '{data['deadlift_results']}',
+                    
+                    '{data['goals']}',
+                    '{data['intensity']}',
+                    '{data['health_restrictions']}',
+                    '{data['times_per_week']}
                     )
                 """
                 await cur.execute(query)
@@ -135,24 +141,3 @@ class User:
 
         user_info = schemas.PromptData(**dict(user_info))
         return user_info
-
-    @classmethod
-    async def increase_attempts_by_user_id(cls, user_id):
-        try:
-            await cur.execute(f"""
-                UPDATE users
-                SET attempts = attempts + 1
-                WHERE tg_id = {user_id}
-                RETURNING attempts
-            """)
-            attempts = await cur.fetchone()
-            if attempts is None:
-                logger.error(f'Попытки у пользователя с id = {user_id} не найдены')
-                raise Exception
-            logger.info(f'Количество попыток у пользователя с id = {user_id} увеличено до {attempts}')
-            await db.commit()
-
-        except Exception as exc:
-            logger.error(f'При увеличении количества попыток у пользователя с id = {user_id} произошла ошибка: {exc}')
-            raise Exception
-

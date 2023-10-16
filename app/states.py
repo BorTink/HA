@@ -7,14 +7,16 @@ class PersonChars(StatesGroup):
     height = State()
     weight = State()
     gym_experience = State()
-    goal = State()
-    time_to_reach = State()
-    intensity = State()
-    times_per_week = State()
-    health_restrictions = State()
-    squats_results = State()
+    max_results = State()
+
     bench_results = State()
     deadlift_results = State()
+    squats_results = State()
+
+    goals = State()
+    intensity = State()
+    health_restrictions = State()
+    times_per_week = State()
 
 
 class GPT(StatesGroup):
