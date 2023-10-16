@@ -12,7 +12,7 @@ class UserResults:
         await cur.execute("""
                     CREATE TABLE IF NOT EXISTS user_results(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    user_id INT,
+                    user_id INTEGER,
                     exercise_id INT,
                     sets INT,
                     weight INT,

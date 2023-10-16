@@ -398,18 +398,21 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
     await callback.message.answer(
-        'Ваши данные были внесены в базу, наш искусственный интеллект составляет вам расписание \n'
-        'Подождите около 4 минут'
+        'Подождите, составляем ваши персональные тренировки...'
     )
 
     for attempt_number in range(3):
         try:
-            timetable = await process_prompt(
+            trainings = await process_prompt(
                 user_id=callback.message.from_user.id
             )
+            answer_text = 'Вот ваше расписание тренировок:\n\n'
+            for i, training in enumerate(trainings):
+                answer_text += f'День {i}\n\n{training}'
+                answer_text += '\n\n' if i == len(trainings)-1 else ''
             await callback.message.answer(
-                f'Вот ваше расписание на понедельник:\n{timetable.monday}',
-                reply_markup=kb.timetable
+                answer_text,
+                reply_markup=kb.trainings_tab
             )
             break
         except Exception as exc:

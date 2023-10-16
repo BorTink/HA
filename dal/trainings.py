@@ -12,53 +12,52 @@ class Trainings:
         await cur.execute("""
                     CREATE TABLE IF NOT EXISTS trainings(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    user_id INT,
-                    day_of_week TEXT,
-                    iteration INT,
+                    user_id INTEGER,
+                    day INTEGER,
                     data TEXT,
-                    goal_time_period INT DEFAULT 10
+                    is_rest BOOLEAN
                     )
                     """)
 
     @classmethod
-    async def update_trainings(cls, user_id, day_of_week, iteration, data, goal_time_period):
+    async def update_trainings(cls, user_id, day, data, is_rest):
         await cur.execute(f"""
         SELECT id
         FROM trainings
         WHERE user_id = {user_id}
-        AND day_of_week = '{day_of_week}'
+        AND day = '{day}'
         """)
         user = await cur.fetchone()
 
         if user:
-            logger.debug(f'Тренировки пользователя {user_id} на {day_of_week} были найдены,'
+            logger.debug(f'Тренировки пользователя {user_id} на день {day} были найдены,'
                          f' происходит обновление тренировок')
             await cur.execute(f"""
                     UPDATE trainings
                     SET
                     (
-                    user_id, day_of_week, iteration, data, goal_time_period
+                    user_id, day, data, is_rest
                     )
                     =
                     (
-                    {user_id}, '{day_of_week}', {iteration}, '{data}', {goal_time_period}
+                    {user_id}, '{day}', '{data}', {is_rest}
                     )
                     WHERE user_id = {user_id}
-                    AND day_of_week = '{day_of_week}'
+                    AND day = '{day}'
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были обновлены.')
 
         else:
-            logger.debug(f'Тренировки пользователя с id = {user_id} на {day_of_week} не были найдены,'
+            logger.debug(f'Тренировки пользователя с id = {user_id} на день {day} не были найдены,'
                          f' создаются новые тренировки.')
             await cur.execute(f"""
                     INSERT INTO trainings
                     (
-                    user_id, day_of_week, iteration, data, goal_time_period
+                    user_id, day, data, is_rest
                     )
                     VALUES
                     (
-                    {user_id}, '{day_of_week}', {iteration}, '{data}', {goal_time_period}
+                    {user_id}, '{day}', '{data}', {is_rest}
                     )
                     """)
             logger.info(f'Тренировки пользователя с id = {user_id} были созданы.')
@@ -66,12 +65,12 @@ class Trainings:
         await db.commit()
 
     @classmethod
-    async def get_trainings_by_day_of_week(cls, user_id, day_of_week):
+    async def get_trainings_by_day(cls, user_id, day):
         await cur.execute(f"""
             SELECT data
             FROM trainings
             WHERE user_id = {user_id}
-            AND day_of_week = '{day_of_week}'
+            AND day = '{day}'
             """)
         trainings = await cur.fetchone()
 

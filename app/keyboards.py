@@ -39,3 +39,8 @@ times_per_week_1 = InlineKeyboardButton('2', callback_data='2')
 times_per_week_2 = InlineKeyboardButton('3', callback_data='3')
 times_per_week_3 = InlineKeyboardButton('4', callback_data='4')
 times_per_week.add(times_per_week_1, times_per_week_2, times_per_week_3)
+
+trainings_tab = InlineKeyboardMarkup(resize_keyboard=True)
+trainings_tab_1 = InlineKeyboardButton('Пересобрать тренировку', callback_data='rebuild_workout')
+trainings_tab_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab.add(trainings_tab_1).add(trainings_tab_2)
