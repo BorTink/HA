@@ -8,6 +8,10 @@ recipes = InlineKeyboardMarkup(resize_keyboard=True)
 recipes_1 = InlineKeyboardButton('Вернуться к расписанию', callback_data='back_to_timetable')
 recipes.add(recipes_1)
 
+main = InlineKeyboardMarkup(resize_keyboard=True)
+main_1 = InlineKeyboardButton('Сгенерировать тренировки', callback_data='generate_trainings')
+main.add(main_1)
+
 main_new = InlineKeyboardMarkup(resize_keyboard=True)
 main_new_1 = InlineKeyboardButton('Приступить к созданию тренировок', callback_data='insert_data')
 main_new.add(main_new_1)

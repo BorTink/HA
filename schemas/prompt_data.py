@@ -9,9 +9,9 @@ class PromptData(BaseModel):
     weight: int
     gym_experience: str
 
-    squats_results: str
-    bench_results: str
-    deadlift_results: str
+    squats_results: int
+    bench_results: int
+    deadlift_results: int
 
     goals: str
     intensity: str

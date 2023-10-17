@@ -37,18 +37,37 @@ async def start(message: types.Message, state: FSMContext):
     user = await dal.User.select_attributes(message.from_user.id)
     logger.info(f'user - {user}')
 
-    # if user:
-    #     await state.set_state(TimetableDays.monday)
-    #     await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
-    #     await message.answer('Выберите действие'
-    #                          ' (ВНИМАНИЕ: в этом прототипе на пересоздание расписания есть лишь 1 попытка)',
-    #                          reply_markup=kb.main)
-    # else:
-    await message.answer(
-        'Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
-        'под ваши индивидуальные запросы. С моей помощью вы сможете разработать эффективную программу занятий '
-        'и легко отслеживать свой прогресс. ',
-        reply_markup=kb.main_new)
+    if user:
+        await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
+        await message.answer('Выберите действие',
+                             reply_markup=kb.main)
+    else:
+        await message.answer(
+            'Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
+            'под ваши индивидуальные запросы. С моей помощью вы сможете разработать эффективную программу занятий '
+            'и легко отслеживать свой прогресс. ',
+            reply_markup=kb.main_new)
+
+
+@dp.callback_query_handler(state='*', text='generate_trainings')
+async def generate_trainings(callback: types.CallbackQuery):
+    await callback.message.answer(
+        'Подождите, составляем ваши персональные тренировки...'
+    )
+
+    for attempt_number in range(3):
+        trainings = await process_prompt(
+            user_id=callback.from_user.id
+        )
+        answer_text = 'Вот ваше расписание тренировок:\n\n'
+        for i, training in enumerate(trainings):
+            answer_text += f'День {i}\n\n{training}'
+            answer_text += '\n\n' if i == len(trainings) - 1 else ''
+        await callback.message.answer(
+            answer_text,
+            reply_markup=kb.trainings_tab
+        )
+        break
 
 
 @dp.message_handler(state='*', text='Купить подписку')
@@ -247,7 +266,7 @@ async def add_weight(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state=PersonChars.gym_experience)
 async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['gym_experience'] = callback.message.text
+        data['gym_experience'] = callback.data
     if callback.data in ['medium', 'experienced']:
         await callback.message.answer(
             'Знаете ли вы свои макимальные показатели веса в жиме лежа, становой тяге и приседаниях со штангой?',
@@ -379,25 +398,18 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
 
     for attempt_number in range(3):
-        try:
-            trainings = await process_prompt(
-                user_id=callback.message.from_user.id
-            )
-            answer_text = 'Вот ваше расписание тренировок:\n\n'
-            for i, training in enumerate(trainings):
-                answer_text += f'День {i}\n\n{training}'
-                answer_text += '\n\n' if i == len(trainings)-1 else ''
-            await callback.message.answer(
-                answer_text,
-                reply_markup=kb.trainings_tab
-            )
-            break
-        except Exception as exc:
-            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
-            if attempt_number == 2:
-                await callback.message.answer(
-                    'При создании расписания произошла ошибка'
-                )
+        trainings = await process_prompt(
+            user_id=callback.from_user.id
+        )
+        answer_text = 'Вот ваше расписание тренировок:\n\n'
+        for i, training in enumerate(trainings):
+            answer_text += f'День {i}\n\n{training}'
+            answer_text += '\n\n' if i == len(trainings)-1 else ''
+        await callback.message.answer(
+            answer_text,
+            reply_markup=kb.trainings_tab
+        )
+        break
 
 
 # ----- ОБЫЧНЫЙ ChatGPT ---------

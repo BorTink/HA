@@ -12,9 +12,9 @@ async def process_prompt(user_id):
     trainings = await fill_prompt(data)
     for i, training in enumerate(trainings):
         await dal.Trainings.update_trainings(
-            user_id=user_id,
+            user_id=int(user_id),
             day=i+1,
-            data=training,
+            data=training.replace('"', '').replace("""'""", ''),
             is_rest=True if training == 'Отдых' else False
         )
 
