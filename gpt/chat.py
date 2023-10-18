@@ -1,6 +1,7 @@
 import re
 
 import openai
+import tiktoken
 from loguru import logger
 
 import dal
@@ -24,9 +25,9 @@ class ChatGPT:
     def chat(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=self.messages,
-            max_tokens=3100
+            max_tokens=3000
         )
         return response["choices"][0]["message"].content
 
@@ -35,33 +36,39 @@ class ChatGPT:
             self.starting_message,
             {"role": "user", "content": message}
         ]
-        words = len(self.messages[0]["content"].split()) + len(self.messages[1]["content"].split())
+        encoding = tiktoken.get_encoding('cl100k_base')
+        prompt_num_tokens = len(encoding.encode(message))
         logger.info(f'Длина промпта для расписания '
-                    f'- {words} слов, т.е. примерно {words*2} токенов')
+                    f'- {prompt_num_tokens} токенов')
+
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=self.messages,
             max_tokens=3000
         )
+        answer = response["choices"][0]["message"].content
+
         self.messages = [
             self.starting_message,
-            {"role": "assistant", "content": response["choices"][0]["message"].content}
+            {"role": "assistant", "content": answer}
         ]
-        words_answer = len(self.messages[1]["content"].split())
+
+        answer_num_tokens = len(encoding.encode(answer))
         logger.info(f'Длина расписания '
-                    f'- {words_answer} слов, т.е. примерно {words_answer*2} токенов. '
-                    f'В сумме вышло {words_answer*2 + words*2} токенов')
-        logger.info(f'Все расписание - {response["choices"][0]["message"]["content"]}')
+                    f'- {answer_num_tokens} токенов. '
+                    f'В сумме вышло {prompt_num_tokens + answer_num_tokens} токенов')
+
+        logger.info(f'Все расписание - {answer}')
 
         return response["choices"][0]["message"]['content']
 
 
 async def fill_prompt(prompt_data: schemas.PromptData):
     prompt_text = f"""
-    Make a full week plan with training days and rest days for the next workouts in the format of 
+    Make a full week split system workout plan with training days and rest days for the next workouts in the format of 
     "Exercise - exact weight of equipment - number of sets - number of repetitions or time required for the exercise - rest between repetitions" 
     without other words based on user information, basic workout rules and practices of top athletes. 
-    In your plan you must separate different muscle groups to different days. Workout time must be 60-90 minutes. Add warm-up before every training. 
+    Workout time must be 60-90 minutes. Add warm-up before every training. 
     Use only top 20 basic exercises, available in every gym, excluding any type of french press. 
     In exercises instead of an empty barbell recommend at least 30 kg of weight. 
     Our user wants to increase his body mass, so you should make a combination of 70% powerlifting and 30% bodybuilding in your plan and 
