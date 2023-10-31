@@ -13,10 +13,9 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from utils import process_prompt
-from .states import PersonChars, timetable_states_list, timetable_states_str_list, TimetableDays, days_translation
+from .states import PersonChars, BaseStates
 from app import keyboards as kb
 import dal
-from gpt.chat_upgraded import UpgradedChatBot
 from gpt.chat import ChatGPT
 
 # ----- СТАРТ И ПОДПИСКА ---------
@@ -44,31 +43,41 @@ async def start(message: types.Message, state: FSMContext):
                              reply_markup=kb.main)
     else:
         await message.answer(
-            'Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
-            'под ваши индивидуальные запросы. С моей помощью вы сможете разработать эффективную программу занятий '
-            'и легко отслеживать свой прогресс. ',
-            reply_markup=kb.main_new)
+            """
+- Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок под ваши индивидуальные запросы.
+
+С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.
+
+*Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, но несут исключительно рекомендательный характер.* 
+
+*Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений.*
+            """,
+            reply_markup=kb.main_new, parse_mode='Markdown')
 
 
 @dp.callback_query_handler(state='*', text='generate_trainings')
-async def generate_trainings(callback: types.CallbackQuery):
+async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
-        'Подождите, составляем ваши персональные тренировки...'
+        '⏳Подождите, составляем персональную тренировку'
     )
 
-    for attempt_number in range(3):
-        trainings = await process_prompt(
-            user_id=callback.from_user.id
-        )
-        answer_text = 'Вот ваше расписание тренировок:\n\n'
-        for i, training in enumerate(trainings):
-            answer_text += f'День {i}\n\n{training}'
-            answer_text += '\n\n' if i == len(trainings) - 1 else ''
-        await callback.message.answer(
-            answer_text,
-            reply_markup=kb.trainings_tab
-        )
-        break
+    await process_prompt(
+        user_id=callback.from_user.id
+    )
+    training, new_day = await dal.Trainings.get_trainings_by_day(
+        user_id=callback.from_user.id,
+        day=1
+    )
+    async with state.proxy() as data:
+        data['day'] = 1
+    await callback.message.answer(
+        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
+    )
+    sleep(2)
+    await callback.message.answer(
+        training,
+        reply_markup=kb.trainings_tab
+    )
 
 
 @dp.message_handler(state='*', text='Купить подписку')
@@ -110,10 +119,8 @@ async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
     if state:
         await state.finish()
 
-    await state.set_state(TimetableDays.monday)
     await callback.message.answer(
-        'Выберите действие'
-        ' (ВНИМАНИЕ: в этом прототипе на пересоздание расписания есть лишь 1 попытка)',
+        'Выберите действие',
         reply_markup=kb.main
     )
 
@@ -122,7 +129,7 @@ async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(state='*', text='lookup_data')
-async def get_data(callback: types.CallbackQuery):
+async def get_data(callback: types.CallbackQuery, state: FSMContext):
     user = await dal.User.select_attributes(callback.from_user.id)
 
     logger.info(f'Составляется расписание для {callback.from_user.id}')
@@ -130,66 +137,90 @@ async def get_data(callback: types.CallbackQuery):
         'Наш искусственный интеллект составляет вам расписание \n'
         'Подождите около 4 минут'
     )
-    for attempt_number in range(3):
-        try:
-            timetable = await process_prompt(
-                user_id=callback.from_user.id
-            )
-            await callback.message.answer(
-                f'Ваше расписание на понедельник:\n{timetable.monday}',
-                reply_markup=kb.timetable
-            )
-            break
-        except Exception as exc:
-            logger.error(f'При обработке промпта произошла ошибка - {exc}. Попытка {attempt_number + 1}')
-            if attempt_number == 2:
-                raise Exception
-                # await callback.message.answer(
-                #     'При создании расписания произошла ошибка'
-                # )
-
-
-@dp.callback_query_handler(state=timetable_states_list, text=['SHOW_TIMETABLE', 'back_to_timetable'])
-async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
-    timetable = await dal.Timetable.get_timetable(callback.from_user.id)
-    state_name = await state.get_state()
-    day_of_week = state_name.split(":")[1]
-
+    await process_prompt(
+        user_id=callback.from_user.id
+    )
+    training, day = await dal.Trainings.get_trainings_by_day(
+        user_id=callback.from_user.id,
+        day=1
+    )
+    async with state.proxy() as data:
+        data['day'] = 1
     await callback.message.answer(
-        f'Ваше расписание на {days_translation[day_of_week]}:\n{eval(f"timetable.{day_of_week}")}',
-        reply_markup=kb.timetable
+        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
+    )
+    sleep(2)
+    await callback.message.answer(
+        training,
+        reply_markup=kb.trainings_tab
     )
 
 
-@dp.callback_query_handler(state=timetable_states_list, text=['show_next_day', 'show_prev_day'])
+@dp.callback_query_handler(state='*', text=['SHOW_TIMETABLE', 'back_to_timetable'])
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
-    state_name = await state.get_state()
-    if callback.data == 'show_next_day':
-        state_index = timetable_states_str_list.index(state_name)
-        if state_index == len(timetable_states_str_list) - 1:
-            await state.set_state(TimetableDays.monday)
-            day_of_week = 'monday'
-        else:
-            day_of_week = timetable_states_str_list[state_index + 1].split(':')[1]
-            await state.set_state(eval(f'TimetableDays.{day_of_week}'))
-
-    elif callback.data == 'show_prev_day':
-        state_index = timetable_states_str_list.index(state_name)
-        if state_index == 0:
-            await state.set_state(TimetableDays.sunday)
-            day_of_week = 'sunday'
-        else:
-            day_of_week = timetable_states_str_list[state_index - 1].split(':')[1]
-            await state.set_state(eval(f'TimetableDays.{day_of_week}'))
-    else:
-        logger.error(f'Некорректная data в callback_query - {callback.data}')
-        raise Exception
-
-    timetable = await dal.Timetable.get_timetable(callback.from_user.id)
-    await callback.message.answer(
-        f'Ваше расписание на {days_translation[day_of_week]}:\n{eval(f"timetable.{day_of_week}")}',
-        reply_markup=kb.timetable
+    await state.set_state(BaseStates.show_trainings)
+    training, day = await dal.Trainings.get_trainings_by_day(
+        user_id=callback.from_user.id,
+        day=1
     )
+    async with state.proxy() as data:
+        data['day'] = 1
+
+    await callback.message.answer(
+        training,
+        reply_markup=kb.trainings_tab
+    )
+
+
+@dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
+async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        if callback.data == 'next_workout':
+            training, new_day = await dal.Trainings.get_next_training(
+                user_id=callback.from_user.id,
+                current_day=data['day']
+            )
+            if training:
+                data['day'] = new_day
+                await callback.message.answer(
+                    training,
+                    reply_markup=kb.trainings_tab
+                )
+            else:
+                training, new_day = await dal.Trainings.get_trainings_by_day(
+                    user_id=callback.from_user.id,
+                    day=1
+                )
+                data['day'] = 1
+                await callback.message.answer(
+                    training,
+                    reply_markup=kb.trainings_tab
+                )
+
+        elif callback.data == 'prev_workout':
+            training, new_day = await dal.Trainings.get_prev_training(
+                user_id=callback.from_user.id,
+                current_day=data['day']
+            )
+            if training:
+                data['day'] = new_day
+                await callback.message.answer(
+                    training,
+                    reply_markup=kb.trainings_tab
+                )
+            else:
+                training, new_day = await dal.Trainings.get_prev_training(
+                    user_id=callback.from_user.id,
+                    current_day=1000000
+                )
+                data['day'] = new_day
+                await callback.message.answer(
+                    training,
+                    reply_markup=kb.trainings_tab
+                )
+        else:
+            logger.error(f'Некорректная data в callback_query - {callback.data}')
+            raise Exception
 
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
@@ -198,9 +229,18 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state='*', text=['update_data', 'insert_data'])
 async def create_edit(callback: types.CallbackQuery):
     await callback.message.answer(
-        'Пожалуйста, ответьте на пару вопросов, чтобы я смог составить вам персональную тренировку.'
+        """
+        🏃 Начинаем пробный период! Туда включён план тренировок на первую неделю и возможность 1 раз пересобрать его. 
+        После завершения пробного периода вам будет предложено оформить подписку для продолжения занятий и доступа к продвинутому функционалу.
+        """
     )
-    sleep(0.5)
+    sleep(1)
+    await callback.message.answer(
+        """
+       💬 Пожалуйста, пройдите небольшую анкету, чтобы я смог составить вам план персональных тренировок на эту неделю.
+        """
+    )
+    sleep(1)
     await callback.message.answer(
         'Укажите свой пол',
         reply_markup=kb.gender
@@ -335,16 +375,27 @@ async def add_squats_results(message: types.Message, state: FSMContext):
             data['squats_results'] = int(message.text)
 
         await message.answer(
-            'Каких результатов вы ожидаете от тренировок? (Например, скинуть вес или набрать мышечную массу) '
-            'Напишите до 100 символов:'
+            'Каких результатов вы ожидаете от тренировок? (Например, скинуть вес или набрать мышечную массу)',
+            reply_markup=kb.expected_results
         )
         await PersonChars.goals.set()
 
 
-@dp.message_handler(state=PersonChars.goals)
-async def add_goal(message: types.Message, state: FSMContext):
+@dp.callback_query_handler(state=PersonChars.goals)
+async def add_goal(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['goals'] = message.text
+        data['goals'] = callback.data
+
+    await callback.message.answer(
+        'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
+    )
+    await PersonChars.focus.set()
+
+
+@dp.message_handler(state=PersonChars.focus)
+async def add_squats_results(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['goals'] += '. Additionally, ' + message.text
 
     await message.answer(
         'Насколько интенсивно вы готовы заниматься? Укажите интенсивность тренировок.',
@@ -372,8 +423,8 @@ async def add_intensity(message: types.Message, state: FSMContext):
         data['health_restrictions'] = message.text
 
     await message.answer(
-        'Сколько раз в неделю вы готовы заниматься '
-        '(Рекомендованное количество: 2-4 дня в неделю):',
+        'Укажите одним числом сколько раз в неделю вы готовы заниматься. '
+        '(Рекомендованное количество: 3-4 дня в неделю, ввести возможно от 2 до 4 дней)',
         reply_markup=kb.times_per_week
     )
 
@@ -392,25 +443,29 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
             data['bench_results'] = 'none'
 
     await dal.User.add_attributes(state, callback.from_user.id)
-    await state.finish()
+    await state.set_state(BaseStates.show_trainings)
 
     await callback.message.answer(
-        'Подождите, составляем ваши персональные тренировки...'
+        '⏳Подождите, составляем персональную тренировку'
     )
 
-    for attempt_number in range(3):
-        trainings = await process_prompt(
-            user_id=callback.from_user.id
-        )
-        answer_text = 'Вот ваше расписание тренировок:\n\n'
-        for i, training in enumerate(trainings):
-            answer_text += f'День {i+1}\n\n{training}'
-            answer_text += '\n\n' if i == len(trainings)-1 else ''
-        await callback.message.answer(
-            answer_text,
-            reply_markup=kb.trainings_tab
-        )
-        break
+    await process_prompt(
+        user_id=callback.from_user.id
+    )
+    training, new_day = await dal.Trainings.get_trainings_by_day(
+        user_id=callback.from_user.id,
+        day=1
+    )
+    async with state.proxy() as data:
+        data['day'] = 1
+    await callback.message.answer(
+        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
+    )
+    sleep(2)
+    await callback.message.answer(
+        training,
+        reply_markup=kb.trainings_tab
+    )
 
 
 # ----- ОБЫЧНЫЙ ChatGPT ---------

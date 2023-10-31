@@ -14,6 +14,7 @@ class PersonChars(StatesGroup):
     squats_results = State()
 
     goals = State()
+    focus = State()
     intensity = State()
     health_restrictions = State()
     times_per_week = State()
@@ -23,42 +24,5 @@ class GPT(StatesGroup):
     gpt = State()
 
 
-class TimetableDays(StatesGroup):
-    monday = State()
-    tuesday = State()
-    wednesday = State()
-    thursday = State()
-    friday = State()
-    saturday = State()
-    sunday = State()
-
-
-timetable_states_list = [
-    TimetableDays.monday,
-    TimetableDays.tuesday,
-    TimetableDays.wednesday,
-    TimetableDays.thursday,
-    TimetableDays.friday,
-    TimetableDays.saturday,
-    TimetableDays.sunday
-]
-
-timetable_states_str_list = [
-    'TimetableDays:monday',
-    'TimetableDays:tuesday',
-    'TimetableDays:wednesday',
-    'TimetableDays:thursday',
-    'TimetableDays:friday',
-    'TimetableDays:saturday',
-    'TimetableDays:sunday'
-]
-
-days_translation = {
-    'monday': 'понедельник',
-    'tuesday': 'вторник',
-    'wednesday': 'среду',
-    'thursday': 'четверг',
-    'friday': 'пятницу',
-    'saturday': 'субботу',
-    'sunday': 'воскресенье'
-}
+class BaseStates(StatesGroup):
+    show_trainings = State()

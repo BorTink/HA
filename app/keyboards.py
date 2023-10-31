@@ -10,7 +10,8 @@ recipes.add(recipes_1)
 
 main = InlineKeyboardMarkup(resize_keyboard=True)
 main_1 = InlineKeyboardButton('Сгенерировать тренировки', callback_data='generate_trainings')
-main.add(main_1)
+main_2 = InlineKeyboardButton('Показать расписание', callback_data='SHOW_TIMETABLE')
+main.add(main_1).add(main_2)
 
 main_new = InlineKeyboardMarkup(resize_keyboard=True)
 main_new_1 = InlineKeyboardButton('Приступить к созданию тренировок', callback_data='insert_data')
@@ -32,6 +33,11 @@ max_results_1 = InlineKeyboardButton('Да', callback_data='yes')
 max_results_2 = InlineKeyboardButton('Нет', callback_data='no')
 max_results.add(max_results_1, max_results_2)
 
+expected_results = InlineKeyboardMarkup(resize_keyboard=True)
+expected_results_1 = InlineKeyboardButton('Набор массы', callback_data='muscle gain')
+expected_results_2 = InlineKeyboardButton('Улучшение рельефа (снижение веса)', callback_data='weight loss')
+expected_results.add(expected_results_1, expected_results_2)
+
 intensity = InlineKeyboardMarkup(resize_keyboard=True)
 intensity_1 = InlineKeyboardButton('🧑‍💼 Умеренная', callback_data='low')
 intensity_2 = InlineKeyboardButton('👨‍🎓 Средняя', callback_data='moderate')
@@ -45,6 +51,24 @@ times_per_week_3 = InlineKeyboardButton('4', callback_data='4')
 times_per_week.add(times_per_week_1, times_per_week_2, times_per_week_3)
 
 trainings_tab = InlineKeyboardMarkup(resize_keyboard=True)
-trainings_tab_1 = InlineKeyboardButton('Пересобрать тренировку', callback_data='rebuild_workout')
+trainings_tab_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workout')
 trainings_tab_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
-trainings_tab.add(trainings_tab_1).add(trainings_tab_2)
+trainings_tab_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
+trainings_tab_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
+trainings_tab.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_4)
+
+trainings_tab_without_prev = InlineKeyboardMarkup(resize_keyboard=True)
+trainings_tab_without_prev_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workout')
+trainings_tab_without_prev_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab_without_prev_3 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
+trainings_tab_without_prev.add(
+    trainings_tab_without_prev_1
+).add(trainings_tab_without_prev_2).add(trainings_tab_without_prev_3)
+
+trainings_tab_without_next = InlineKeyboardMarkup(resize_keyboard=True)
+trainings_tab_without_next_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workout')
+trainings_tab_without_next_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab_without_next_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
+trainings_tab_without_next.add(
+    trainings_tab_without_next_1
+).add(trainings_tab_without_next_2).add(trainings_tab_without_next_3)

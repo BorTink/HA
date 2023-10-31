@@ -20,6 +20,16 @@ class Trainings:
                     """)
 
     @classmethod
+    async def remove_prev_trainings(cls, user_id):
+        await cur.execute(f"""
+        DELETE FROM trainings
+        WHERE user_id = {user_id}
+        """)
+
+        logger.info(f'Все тренировки пользователя с id = {user_id} были удалены.')
+        await db.commit()
+
+    @classmethod
     async def update_trainings(cls, user_id, day, data, is_rest):
         await cur.execute(f"""
         SELECT id
@@ -67,11 +77,37 @@ class Trainings:
     @classmethod
     async def get_trainings_by_day(cls, user_id, day):
         await cur.execute(f"""
-            SELECT data
+            SELECT data, day
             FROM trainings
             WHERE user_id = {user_id}
             AND day = '{day}'
             """)
         trainings = await cur.fetchone()
 
-        return trainings if trainings else None
+        return trainings if trainings else (None, None)
+
+    @classmethod
+    async def get_next_training(cls, user_id, current_day):
+        await cur.execute(f"""
+                SELECT data, day
+                FROM trainings
+                WHERE user_id = {user_id}
+                AND day > {current_day}
+                ORDER BY day ASC
+                """)
+        trainings = await cur.fetchone()
+
+        return trainings if trainings else (None, None)
+
+    @classmethod
+    async def get_prev_training(cls, user_id, current_day):
+        await cur.execute(f"""
+                SELECT data, day
+                FROM trainings
+                WHERE user_id = {user_id}
+                AND day < {current_day}
+                ORDER BY day DESC
+                """)
+        trainings = await cur.fetchone()
+
+        return trainings if trainings else (None, None)
