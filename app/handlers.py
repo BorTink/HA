@@ -404,7 +404,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         )
         answer_text = 'Вот ваше расписание тренировок:\n\n'
         for i, training in enumerate(trainings):
-            answer_text += f'День {i}\n\n{training}'
+            answer_text += f'День {i+1}\n\n{training}'
             answer_text += '\n\n' if i == len(trainings)-1 else ''
         await callback.message.answer(
             answer_text,
