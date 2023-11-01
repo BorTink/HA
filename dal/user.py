@@ -32,7 +32,10 @@ class User:
                     goals TEXT,
                     intensity TEXT,
                     health_restrictions TEXT,
-                    times_per_week INTEGER
+                    times_per_week INTEGER,
+                    
+                    rebuilt BOOLEAN DEFAULT 0 CHECK (rebuilt IN (0, 1)),
+                    subscribed BOOLEAN DEFAULT 0 CHECK (subscribed IN (0, 1))
                     )
                     """)
 
@@ -111,20 +114,6 @@ class User:
             return True
 
     @classmethod
-    async def get_user(cls, user_id):
-        await cur.execute(f"""
-                    SELECT *
-                    FROM users
-                    WHERE tg_id = {user_id}
-                """)
-        user_info = await cur.fetchone()
-        if user_info is None:
-            logger.debug(f'Пользователя с id = {user_id} не существует')
-            return None
-        else:
-            return user_info
-
-    @classmethod
     async def select_attributes(cls, user_id):
         await cur.execute(f"""
                 SELECT *
@@ -138,3 +127,25 @@ class User:
 
         user_info = schemas.PromptData(**dict(user_info))
         return user_info
+
+    @classmethod
+    async def update_rebuilt_parameter(cls, user_id):
+        await cur.execute(f"""
+                UPDATE users
+                SET rebuilt = 1
+                WHERE tg_id = {user_id}
+            """)
+        logger.info(f'Параметр rebuilt у пользователя с id = {user_id} изменен на 1')
+
+        await db.commit()
+
+    @classmethod
+    async def update_subscribed_parameter(cls, user_id):
+        await cur.execute(f"""
+                    UPDATE users
+                    SET subscribed = 1
+                    WHERE tg_id = {user_id}
+                """)
+        logger.info(f'Параметр subscribed у пользователя с id = {user_id} изменен на 1')
+
+        await db.commit()

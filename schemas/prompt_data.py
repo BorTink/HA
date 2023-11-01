@@ -18,6 +18,9 @@ class PromptData(BaseModel):
     health_restrictions: str
     times_per_week: int
 
+    rebuilt: bool
+    subscribed: bool
+
 
 class TimetableData(BaseModel):
     monday: str

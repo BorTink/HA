@@ -43,16 +43,27 @@ async def start(message: types.Message, state: FSMContext):
                              reply_markup=kb.main)
     else:
         await message.answer(
-            """
-- Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок под ваши индивидуальные запросы.
-
-С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.
-
-*Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, но несут исключительно рекомендательный характер.* 
-
-*Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений.*
-            """,
-            reply_markup=kb.main_new, parse_mode='Markdown')
+            '👋 Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
+            'под ваши индивидуальные запросы.',
+            parse_mode='Markdown'
+        )
+        sleep(1)
+        await message.answer(
+            'С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.',
+            parse_mode='Markdown'
+        )
+        sleep(1)
+        await message.answer(
+            '_Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, '
+            'но несут исключительно рекомендательный характер._',
+            parse_mode='Markdown'
+        )
+        sleep(1)
+        await message.answer(
+            '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
+            reply_markup=kb.main_new,
+            parse_mode='Markdown'
+        )
 
 
 @dp.callback_query_handler(state='*', text='generate_trainings')
@@ -60,6 +71,8 @@ async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         '⏳Подождите, составляем персональную тренировку'
     )
+
+    await state.set_state(BaseStates.show_trainings)
 
     await process_prompt(
         user_id=callback.from_user.id
@@ -128,37 +141,10 @@ async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
 # ----- УПРАВЛЕНИЕ РАСПИСАНИЕМ ---------
 
 
-@dp.callback_query_handler(state='*', text='lookup_data')
-async def get_data(callback: types.CallbackQuery, state: FSMContext):
-    user = await dal.User.select_attributes(callback.from_user.id)
-
-    logger.info(f'Составляется расписание для {callback.from_user.id}')
-    await callback.message.answer(
-        'Наш искусственный интеллект составляет вам расписание \n'
-        'Подождите около 4 минут'
-    )
-    await process_prompt(
-        user_id=callback.from_user.id
-    )
-    training, day = await dal.Trainings.get_trainings_by_day(
-        user_id=callback.from_user.id,
-        day=1
-    )
-    async with state.proxy() as data:
-        data['day'] = 1
-    await callback.message.answer(
-        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
-    )
-    sleep(2)
-    await callback.message.answer(
-        training,
-        reply_markup=kb.trainings_tab
-    )
-
-
 @dp.callback_query_handler(state='*', text=['SHOW_TIMETABLE', 'back_to_timetable'])
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.show_trainings)
+
     training, day = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
@@ -173,7 +159,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
-async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
+async def switch_days(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         if callback.data == 'next_workout':
             training, new_day = await dal.Trainings.get_next_training(
@@ -223,16 +209,56 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
             raise Exception
 
 
+@dp.callback_query_handler(state=BaseStates.show_trainings, text='rebuild_workouts')
+async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContext):
+    user = await dal.User.select_attributes(callback.from_user.id)
+    if user.rebuilt == 1:
+        await callback.message.answer(
+            'Вы уже пересобирали тренировку на неделю'
+        )
+    else:
+        await callback.message.answer(
+            'Введите что вы хотите изменить до 100 символов. '
+            '(Тренировку можно пересобрать 1 раз в пробной версии, может добавить нужные упражнения или что-то убрать)'
+        )
+        await state.set_state(BaseStates.rebuild_workouts)
+
+
+@dp.message_handler(state=BaseStates.rebuild_workouts)
+async def rebuild_workouts(message: types.Message, state: FSMContext):
+    await message.answer(
+        '⏳Подождите, пересобираем персональную тренировку'
+    )
+
+    await state.set_state(BaseStates.show_trainings)
+
+    await dal.User.update_rebuilt_parameter(message.from_user.id)
+
+    await process_prompt(
+        user_id=message.from_user.id,
+        client_changes=message.text
+    )
+    training, new_day = await dal.Trainings.get_trainings_by_day(
+        user_id=message.from_user.id,
+        day=1
+    )
+    async with state.proxy() as data:
+        data['day'] = 1
+
+    await message.answer(
+        training,
+        reply_markup=kb.trainings_tab
+    )
+
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
 
 @dp.callback_query_handler(state='*', text=['update_data', 'insert_data'])
 async def create_edit(callback: types.CallbackQuery):
     await callback.message.answer(
-        """
-        🏃 Начинаем пробный период! Туда включён план тренировок на первую неделю и возможность 1 раз пересобрать его. 
-        После завершения пробного периода вам будет предложено оформить подписку для продолжения занятий и доступа к продвинутому функционалу.
-        """
+        '🏃 Начинаем пробный период! Туда включён план тренировок на первую неделю и возможность 1 раз пересобрать его.' 
+        'После завершения пробного периода вам будет предложено оформить подписку для продолжения занятий и доступа к '
+        'продвинутому функционалу.'
     )
     sleep(1)
     await callback.message.answer(

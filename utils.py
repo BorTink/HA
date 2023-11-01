@@ -4,11 +4,11 @@ from gpt.chat import fill_prompt
 import dal
 
 
-async def process_prompt(user_id):
+async def process_prompt(user_id, client_changes=None):
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
 
-    trainings = await fill_prompt(data)
+    trainings = await fill_prompt(data, client_changes)
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
