@@ -26,7 +26,7 @@ bot = Bot(os.getenv('TOKEN'))
 dp = Dispatcher(bot=bot, storage=MemoryStorage())  # storage впоследствии изменить на redis
 dp.middleware.setup(LoggingMiddleware())
 
-PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=500*100)
+PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=399*100)
 
 
 @dp.message_handler(state='*', commands=['start'])
@@ -98,8 +98,24 @@ async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(state='*', text='Купить подписку')
 async def buy_subscription(message: types.Message, state: FSMContext):
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
-        await message.answer('Тестовый платеж!')
-
+        await message.answer(' 🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
+                             'рекомендуем оформить ежемесячную подписку! '
+                             'Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
+                             'для получения максимальной пользы.')
+        sleep(1)
+        await message.answer("""
+Основные преимущества подписки:
+▫️Регулярное обновление программы тренировок;
+▫️Высокая персонализация (с опорой на ваши результаты);
+▫️Повышенная эффективность от тренировок;
+▫️Возможность обновлять свои данные;
+▫️Поддержка на всём периоде занятий
+""")
+        sleep(1)
+        await message.answer('Стоимость подписки 399 руб/мес.')
+        sleep(1)
+        await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
+        sleep(2)
     await bot.send_invoice(message.chat.id,
                            title='Подписка на бота',
                            description='Подписка на бота на 1 месяц',
@@ -107,7 +123,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                            currency='rub',
                            photo_url='https://img.freepik.com/premium-photo/this-sleek-minimalist-home-gym-features-floortoceiling-windows-that-allow-abundant-natural-light-illuminate-space-generated-by-ai_661108-5016.jpg',
                            photo_width=1270,
-                           is_flexible=False,
+                           is_flexible=True,
                            prices=[PRICE],
                            start_parameter='one-month-subscription',
                            payload='test-invoice-payload')
@@ -513,7 +529,7 @@ async def add_squats_results(message: types.Message, state: FSMContext):
             data['squats_results'] = int(message.text)
 
         await message.answer(
-            'Каких результатов вы ожидаете от тренировок? (Например, скинуть вес или набрать мышечную массу)',
+            'Каких результатов вы ожидаете от тренировок?',
             reply_markup=kb.expected_results
         )
         await PersonChars.goals.set()
