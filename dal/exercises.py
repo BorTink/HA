@@ -32,3 +32,26 @@ class Exercises:
         else:
             logger.debug(f'Инструкция к тренировке {name} не была найдена. Производится поиск инструкции')
             return None  # TODO: Интегрировать YouTube Search API для поиска инструкций
+
+    @classmethod
+    async def add_exercise(cls, name):
+        await cur.execute(f"""
+        SELECT link
+        FROM exercises
+        WHERE name = '{name}'
+        """)
+        exercise_link = await cur.fetchone()
+
+        if exercise_link:
+            logger.info(f'Упражнение {name} было уже вписано')
+        else:
+            logger.info(f'Упражнение {name} было не найдено, добавляем название')
+            await cur.execute(f"""
+                    INSERT INTO exercises
+                    (name)
+                    VALUES
+                    ('{name}')
+                    RETURNING link
+            """)
+            logger.info(f'Упражнение {name} было добавлено)')
+            # TODO: Интегрировать YouTube Search API для поиска инструкций

@@ -26,3 +26,15 @@ async def process_prompt(user_id, client_changes=None):
         day_number += 1
 
     return trainings
+
+
+async def split_workout(workout, weight_index, weight_value):
+    part_before_kg = workout[weight_index].split(' ')
+    workout_in_process = ' '.join(part_before_kg[:-1]) + f' *{weight_value}*' + ' кг'
+
+    first_half = ' кг'.join(workout[0:weight_index])
+    if first_half:
+        first_half += ' кг'
+    workout_in_process = first_half + workout_in_process + ' кг'.join(workout[weight_index + 1:])
+
+    return workout_in_process

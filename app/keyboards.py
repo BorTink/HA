@@ -73,3 +73,12 @@ trainings_tab_without_next_3 = InlineKeyboardButton('Предыдущая тре
 trainings_tab_without_next.add(
     trainings_tab_without_next_1
 ).add(trainings_tab_without_next_2).add(trainings_tab_without_next_3)
+
+start_workout = InlineKeyboardMarkup(resize_keyboard=True)
+start_workout_1 = InlineKeyboardButton('Ввести показатели', callback_data='insert_weights')
+start_workout.add(start_workout_1)
+
+insert_weights_in_workout = InlineKeyboardMarkup(resize_keyboard=True)
+insert_weights_in_workout_1 = InlineKeyboardButton('Пропустить', callback_data='skip_weight')
+insert_weights_in_workout_2 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
+insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)

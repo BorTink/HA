@@ -27,3 +27,5 @@ class GPT(StatesGroup):
 class BaseStates(StatesGroup):
     show_trainings = State()
     rebuild_workouts = State()
+    start_workout = State()
+    add_weight = State()

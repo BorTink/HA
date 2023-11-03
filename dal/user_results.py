@@ -22,9 +22,9 @@ class UserResults:
                     """)
 
     @classmethod
-    async def update_user_results(cls, user_id, name, sets, weight, reps, time):
+    async def update_user_results(cls, user_id, name, sets, weight, reps, time=None, ):
         await cur.execute(f"""
-        SELECT id
+        SELECT user_results.id
         FROM user_results
         JOIN exercises ON exercises.name = '{name}'
         WHERE user_id = {user_id}
@@ -39,14 +39,15 @@ class UserResults:
                     UPDATE user_results
                     SET
                     (
-                    sets, weight, reps, time
+                    exercise_id, sets, weight, reps, time
                     )
                     =
                     (
-                    {sets}, {weight}, {reps}, {time}
+                    (SELECT id FROM exercises WHERE name = '{name}'), {sets}, {weight}, {reps}, {time if time else 'null'}
                     )
+                    FROM exercises e 
                     WHERE user_id = {user_id}
-                    AND exercise_id = exercises.id
+                    AND exercise_id = e.id
                     """)
             logger.info(f'Результаты пользователя {user_id} для упражнения {name} были обновлены')
 
@@ -56,11 +57,11 @@ class UserResults:
             await cur.execute(f"""
                     INSERT INTO user_results
                     (
-                    user_id, sets, weight, reps, time
+                    user_id, exercise_id, sets, weight, reps, time
                     )
                     VALUES
                     (
-                    {user_id}, {sets}, {weight}, {reps}, {time}
+                    {user_id}, (SELECT id FROM exercises WHERE name = '{name}'), {sets}, {weight}, {reps}, {time if time else 'null'}
                     )
                     """)
             logger.info(f'Результаты пользователя с id = {user_id} для упражнения {name} были внесены.')

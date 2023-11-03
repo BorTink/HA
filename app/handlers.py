@@ -12,7 +12,7 @@ from aiogram.types.message import ContentType
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils import process_prompt
+from utils import process_prompt, split_workout
 from .states import PersonChars, BaseStates
 from app import keyboards as kb
 import dal
@@ -83,6 +83,8 @@ async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
     )
     async with state.proxy() as data:
         data['day'] = 1
+        data['workout'] = training
+
     await callback.message.answer(
         '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
     )
@@ -151,6 +153,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     )
     async with state.proxy() as data:
         data['day'] = 1
+        data['workout'] = training
 
     await callback.message.answer(
         training,
@@ -168,6 +171,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
             )
             if training:
                 data['day'] = new_day
+                data['workout'] = training
                 await callback.message.answer(
                     training,
                     reply_markup=kb.trainings_tab
@@ -178,6 +182,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                     day=1
                 )
                 data['day'] = 1
+                data['workout'] = training
+
                 await callback.message.answer(
                     training,
                     reply_markup=kb.trainings_tab
@@ -190,6 +196,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
             )
             if training:
                 data['day'] = new_day
+                data['workout'] = training
+
                 await callback.message.answer(
                     training,
                     reply_markup=kb.trainings_tab
@@ -200,6 +208,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                     current_day=1000000
                 )
                 data['day'] = new_day
+                data['workout'] = training
+
                 await callback.message.answer(
                     training,
                     reply_markup=kb.trainings_tab
@@ -244,11 +254,113 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
     )
     async with state.proxy() as data:
         data['day'] = 1
+        data['workout'] = training
 
     await message.answer(
         training,
         reply_markup=kb.trainings_tab
     )
+
+
+@dp.callback_query_handler(state=BaseStates.show_trainings, text='start_workout')
+async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        '☝️ Помните, что указанный в упражнениях вес является приблизительным. '
+        'Если вам тяжело или легко выполнять заданное количество упражнений с каким-то весом, '
+        'поменяйте его исходя из ваших возможностей.'
+    )
+    sleep(1)
+    await callback.message.answer(
+        'При возникновении любых проблем обязательно проконсультируйтесь с лицензированным специалистом!'
+    )
+    sleep(1)
+    await state.set_state(BaseStates.start_workout)
+    async with state.proxy() as data:
+        data['weight_index'] = 0
+        data['workout'] = data['workout'].split(' кг')
+    await callback.message.answer(
+        '☝После того, как пройдете тренировку (или по ходу выполнения упражнений), '
+        'обязательно введите свои показатели, чтобы усовершенствовать будущие занятия. '
+        'Это поможет при расчёте оптимальных нагрузок и времени восстановления.\nХорошей тренировки!',
+        reply_markup=kb.start_workout
+    )
+
+
+@dp.callback_query_handler(state=BaseStates.start_workout, text='insert_weights')
+async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        current_weight = data['workout'][0].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        await callback.message.answer(
+            workout_in_process,
+            reply_markup=kb.insert_weights_in_workout,
+            parse_mode='Markdown'
+        )
+
+
+@dp.callback_query_handler(state=BaseStates.start_workout, text='add_weight')
+async def add_weight(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(BaseStates.add_weight)
+    await callback.message.answer(
+        'Введите новый вес'
+    )
+
+
+@dp.message_handler(state=BaseStates.add_weight)
+async def add_weight(message: types.Message, state: FSMContext):
+    if message.text.isdigit() is False:
+        await message.answer('Необходимо ввести численное значение')
+    elif int(message.text) > 300:
+        await message.answer('Похоже вы опечатались, перевведите значение')
+    else:
+        async with state.proxy() as data:
+            workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
+            workout_in_process = workout_in_process.replace('*', '')
+            data['workout'] = workout_in_process.split(' кг')
+
+            if data['weight_index'] == len(data['workout']) - 2:
+                await state.set_state(BaseStates.show_trainings)
+
+                for i in range(len(data['workout'])-1):
+                    cur_segment = data['workout'][i].split('\n')[-1].split(' ')
+                    name = ' '.join(cur_segment[:-2])
+                    weight = cur_segment[-1]
+
+                    next_segment = data['workout'][i+1].split('\n')[0].split(' ')
+                    sets = next_segment[1]
+                    reps = next_segment[3]
+                    await dal.Exercises.add_exercise(name)
+                    await dal.UserResults.update_user_results(
+                        user_id=message.from_user.id,
+                        name=name,
+                        sets=sets,
+                        weight=weight,
+                        reps=reps
+                    )
+
+                await message.answer('Вы закончили тренировку')
+                sleep(0.5)
+                await dal.Trainings.update_trainings(message.from_user.id, data['day'], workout_in_process, False)
+                training, new_day = await dal.Trainings.get_trainings_by_day(
+                    user_id=message.from_user.id,
+                    day=1
+                )
+                data['workout'] = training
+
+                await message.answer(
+                    training,
+                    reply_markup=kb.trainings_tab
+                )
+            else:
+                await state.set_state(BaseStates.start_workout)
+                data['weight_index'] += 1
+                current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+                workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+                await message.answer(
+                    workout_in_process,
+                    reply_markup=kb.insert_weights_in_workout,
+                    parse_mode='Markdown'
+                )
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
@@ -342,8 +454,8 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
         await PersonChars.max_results.set()
     else:
         await callback.message.answer(
-            'Каких результатов вы ожидаете от тренировок? (Например, скинуть вес или набрать мышечную массу) '
-            'Напишите до 100 символов:'
+            'Каких результатов вы ожидаете от тренировок?',
+            reply_markup=kb.expected_results
         )
         await PersonChars.goals.set()
 
@@ -358,8 +470,8 @@ async def ask_max_results(callback: types.CallbackQuery):
 
     if callback.data == 'no':
         await callback.message.answer(
-            'Каких результатов вы ожидаете от тренировок? (Например, скинуть вес или набрать мышечную массу) '
-            'Напишите до 100 символов:'
+            'Каких результатов вы ожидаете от тренировок?',
+            reply_markup=kb.expected_results
         )
         await PersonChars.goals.set()
 
@@ -484,6 +596,8 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
     async with state.proxy() as data:
         data['day'] = 1
+        data['workout'] = training
+
     await callback.message.answer(
         '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
     )
@@ -514,7 +628,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
 #     await message.reply(reply)
 
 
-@dp.message_handler(state='*')
+@dp.message_handler(state=None)
 async def answer(message: types.Message):
     try:
         encoding = tiktoken.get_encoding('cl100k_base')
