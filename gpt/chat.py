@@ -27,7 +27,7 @@ class ChatGPT:
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=self.messages,
-            max_tokens=3000
+            max_tokens=3000,
         )
         return response["choices"][0]["message"].content
 
