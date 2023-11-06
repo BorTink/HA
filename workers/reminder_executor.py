@@ -1,4 +1,4 @@
-import pathlib
+import os
 
 from loguru import logger
 import asyncio
@@ -21,7 +21,7 @@ async def enable_reminder():
 
 
 if __name__ == '__main__':
-    LOG_FILE_NAME = str(pathlib.Path(__file__).parent.parent) + '/log/reminder.log'
+    LOG_FILE_NAME = os.path.dirname(os.path.realpath(__file__)) + '/log/reminder.log'
     logger.add(
         LOG_FILE_NAME,
         level='DEBUG',
