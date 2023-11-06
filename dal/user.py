@@ -3,12 +3,14 @@ import aiosqlite as sq
 
 import schemas
 
+boolean_dict = {True: 1, False: 0}
+
 
 class User:
     @classmethod
     async def db_start(cls):
         global db, cur
-        db = await sq.connect('tg.db')
+        db = await sq.connect('/home/boris/TelegramBots/Health_AI/tg.db', isolation_level=None)
         db.row_factory = sq.Row
         cur = await db.cursor()
 
@@ -149,3 +151,33 @@ class User:
         logger.info(f'Параметр subscribed у пользователя с id = {user_id} изменен на 1')
 
         await db.commit()
+
+    @classmethod
+    async def check_if_subscribed_by_user_id(cls, user_id):
+        await cur.execute(f"""
+                SELECT subscribed
+                FROM users
+                WHERE user_id = {user_id}
+            """)
+        subscribed = await cur.fetchone()
+        if subscribed:
+            logger.debug(f'Пользователь {user_id} подписан')
+            return True
+        else:
+            logger.warning(f'Пользователь {user_id} не подписан')
+            return False
+
+    @classmethod
+    async def check_if_rebuilt_by_user_id(cls, user_id):
+        await cur.execute(f"""
+                    SELECT rebuilt
+                    FROM users
+                    WHERE user_id = {user_id}
+                """)
+        subscribed = await cur.fetchone()
+        if subscribed:
+            logger.warning(f'Пользователь {user_id} уже пересобирал тренировку')
+            return True
+        else:
+            logger.debug(f'Пользователь {user_id} еще не пересобирал тренировку')
+            return False

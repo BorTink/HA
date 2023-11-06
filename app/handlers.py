@@ -1,5 +1,4 @@
-import time
-from time import sleep
+import asyncio
 import os
 
 import tiktoken
@@ -47,18 +46,18 @@ async def start(message: types.Message, state: FSMContext):
             'под ваши индивидуальные запросы.',
             parse_mode='Markdown'
         )
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer(
             'С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.',
             parse_mode='Markdown'
         )
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer(
             '_Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, '
             'но несут исключительно рекомендательный характер._',
             parse_mode='Markdown'
         )
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer(
             '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
             reply_markup=kb.main_new,
@@ -77,6 +76,13 @@ async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
     await process_prompt(
         user_id=callback.from_user.id
     )
+
+    await dal.Trainings.update_active_training_by_day(
+        user_id=callback.from_user.id,
+        day=1,
+        active=True
+    )
+
     training, new_day = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
@@ -88,7 +94,7 @@ async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
     )
-    sleep(2)
+    await asyncio.sleep(2)
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab
@@ -102,7 +108,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                              'рекомендуем оформить ежемесячную подписку! '
                              'Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
                              'для получения максимальной пользы.')
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer("""
 Основные преимущества подписки:
 ▫️Регулярное обновление программы тренировок;
@@ -111,11 +117,11 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 ▫️Возможность обновлять свои данные;
 ▫️Поддержка на всём периоде занятий
 """)
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer('Стоимость подписки 399 руб/мес.')
-        sleep(1)
+        await asyncio.sleep(1)
         await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
-        sleep(2)
+        await asyncio.sleep(2)
     await bot.send_invoice(message.chat.id,
                            title='Подписка на бота',
                            description='Подписка на бота на 1 месяц',
@@ -264,6 +270,13 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         user_id=message.from_user.id,
         client_changes=message.text
     )
+
+    await dal.Trainings.update_active_training_by_day(
+        user_id=message.from_user.id,
+        day=1,
+        active=True
+    )
+
     training, new_day = await dal.Trainings.get_trainings_by_day(
         user_id=message.from_user.id,
         day=1
@@ -285,11 +298,11 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
         'Если вам тяжело или легко выполнять заданное количество упражнений с каким-то весом, '
         'поменяйте его исходя из ваших возможностей.'
     )
-    sleep(1)
+    await asyncio.sleep(1)
     await callback.message.answer(
         'При возникновении любых проблем обязательно проконсультируйтесь с лицензированным специалистом!'
     )
-    sleep(1)
+    await asyncio.sleep(1)
     await state.set_state(BaseStates.start_workout)
     async with state.proxy() as data:
         data['weight_index'] = 0
@@ -305,6 +318,11 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.start_workout, text='insert_weights')
 async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
+        await dal.Trainings.update_in_progress_training_by_day(
+            user_id=callback.from_user.id,
+            day=data['day'],
+            in_progress=True
+        )
         current_weight = data['workout'][0].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await callback.message.answer(
@@ -320,6 +338,19 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         'Введите новый вес'
     )
+
+
+@dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text='skip_weight')
+async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['weight_index'] += 1
+        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        await callback.message.answer(
+            workout_in_process,
+            reply_markup=kb.insert_weights_in_workout,
+            parse_mode='Markdown'
+        )
 
 
 @dp.message_handler(state=BaseStates.add_weight)
@@ -355,13 +386,33 @@ async def add_weight(message: types.Message, state: FSMContext):
                     )
 
                 await message.answer('Вы закончили тренировку')
-                sleep(0.5)
-                await dal.Trainings.update_trainings(message.from_user.id, data['day'], workout_in_process, False)
-                training, new_day = await dal.Trainings.get_trainings_by_day(
+                await asyncio.sleep(0.5)
+                await dal.Trainings.update_trainings(
                     user_id=message.from_user.id,
-                    day=1
+                    day=data['day'],
+                    data=workout_in_process,
+                    active=False
                 )
+                training, new_day = await dal.Trainings.get_next_training(
+                    user_id=message.from_user.id,
+                    current_day=data['day']
+                )
+                if training:
+                    await dal.Trainings.update_active_training_by_day(
+                        user_id=message.from_user.id,
+                        day=new_day,
+                        active=True
+                    )
+                else:
+                    await message.answer('Вы закончили все тренировки на этой неделе')
+                    await asyncio.sleep(2)
+                    training, new_day = await dal.Trainings.get_trainings_by_day(
+                        user_id=message.from_user.id,
+                        day=1
+                    )
+
                 data['workout'] = training
+                data['day'] = new_day
 
                 await message.answer(
                     training,
@@ -388,13 +439,13 @@ async def create_edit(callback: types.CallbackQuery):
         'После завершения пробного периода вам будет предложено оформить подписку для продолжения занятий и доступа к '
         'продвинутому функционалу.'
     )
-    sleep(1)
+    await asyncio.sleep(1)
     await callback.message.answer(
         """
        💬 Пожалуйста, пройдите небольшую анкету, чтобы я смог составить вам план персональных тренировок на эту неделю.
         """
     )
-    sleep(1)
+    await asyncio.sleep(1)
     await callback.message.answer(
         'Укажите свой пол',
         reply_markup=kb.gender
@@ -606,6 +657,11 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await process_prompt(
         user_id=callback.from_user.id
     )
+    await dal.Trainings.update_active_training_by_day(
+        user_id=callback.from_user.id,
+        day=1,
+        active=True
+    )
     training, new_day = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
@@ -617,7 +673,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
     )
-    sleep(2)
+    await asyncio.sleep(2)
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab
