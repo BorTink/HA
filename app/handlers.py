@@ -11,7 +11,7 @@ from aiogram.types.message import ContentType
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils import process_prompt, split_workout
+from utils import process_prompt, split_workout, process_workout
 from .states import PersonChars, BaseStates
 from app import keyboards as kb
 import dal
@@ -121,18 +121,21 @@ async def buy_subscription(message: types.Message, state: FSMContext):
         await message.answer('Стоимость подписки 399 руб/мес.')
         await asyncio.sleep(1)
         await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
+        with open('/home/boris/TelegramBots/Health_AI/img/logo.jpg', 'rb') as photo_file:
+            await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
         await asyncio.sleep(2)
-    await bot.send_invoice(message.chat.id,
-                           title='Подписка на бота',
-                           description='Подписка на бота на 1 месяц',
-                           provider_token=os.getenv('PAYMENTS_TOKEN'),
-                           currency='rub',
-                           photo_url='https://img.freepik.com/premium-photo/this-sleek-minimalist-home-gym-features-floortoceiling-windows-that-allow-abundant-natural-light-illuminate-space-generated-by-ai_661108-5016.jpg',
-                           photo_width=1270,
-                           is_flexible=True,
-                           prices=[PRICE],
-                           start_parameter='one-month-subscription',
-                           payload='test-invoice-payload')
+
+        await bot.send_invoice(message.chat.id,
+                               title='Подписка на бота',
+                               description='Подписка на бота на 1 месяц',
+                               provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               currency='rub',
+                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
+                               photo_width=1270,
+                               is_flexible=True,
+                               prices=[PRICE],
+                               start_parameter='one-month-subscription',
+                               payload='test-invoice-payload')
 
 
 @dp.pre_checkout_query_handler(lambda query: True)
@@ -343,14 +346,9 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text='skip_weight')
 async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await callback.message.answer(
-            workout_in_process,
-            reply_markup=kb.insert_weights_in_workout,
-            parse_mode='Markdown'
-        )
+        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
 
 
 @dp.message_handler(state=BaseStates.add_weight)
@@ -362,72 +360,8 @@ async def add_weight(message: types.Message, state: FSMContext):
     else:
         async with state.proxy() as data:
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
-            workout_in_process = workout_in_process.replace('*', '')
-            data['workout'] = workout_in_process.split(' кг')
 
-            if data['weight_index'] == len(data['workout']) - 2:
-                await state.set_state(BaseStates.show_trainings)
-
-                for i in range(len(data['workout'])-1):
-                    cur_segment = data['workout'][i].split('\n')[-1].split(' ')
-                    name = ' '.join(cur_segment[:-2])
-                    weight = cur_segment[-1]
-
-                    next_segment = data['workout'][i+1].split('\n')[0].split(' ')
-                    sets = next_segment[1]
-                    reps = next_segment[3]
-                    await dal.Exercises.add_exercise(name)
-                    await dal.UserResults.update_user_results(
-                        user_id=message.from_user.id,
-                        name=name,
-                        sets=sets,
-                        weight=weight,
-                        reps=reps
-                    )
-
-                await message.answer('Вы закончили тренировку')
-                await asyncio.sleep(0.5)
-                await dal.Trainings.update_trainings(
-                    user_id=message.from_user.id,
-                    day=data['day'],
-                    data=workout_in_process,
-                    active=False
-                )
-                training, new_day = await dal.Trainings.get_next_training(
-                    user_id=message.from_user.id,
-                    current_day=data['day']
-                )
-                if training:
-                    await dal.Trainings.update_active_training_by_day(
-                        user_id=message.from_user.id,
-                        day=new_day,
-                        active=True
-                    )
-                else:
-                    await message.answer('Вы закончили все тренировки на этой неделе')
-                    await asyncio.sleep(2)
-                    training, new_day = await dal.Trainings.get_trainings_by_day(
-                        user_id=message.from_user.id,
-                        day=1
-                    )
-
-                data['workout'] = training
-                data['day'] = new_day
-
-                await message.answer(
-                    training,
-                    reply_markup=kb.trainings_tab
-                )
-            else:
-                await state.set_state(BaseStates.start_workout)
-                data['weight_index'] += 1
-                current_weight = data['workout'][data['weight_index']].split(' ')[-1]
-                workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-                await message.answer(
-                    workout_in_process,
-                    reply_markup=kb.insert_weights_in_workout,
-                    parse_mode='Markdown'
-                )
+            await process_workout(workout_in_process, data, state, message, kb)
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
