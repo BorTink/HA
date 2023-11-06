@@ -1,3 +1,5 @@
+import pathlib
+
 from loguru import logger
 import aiosqlite as sq
 
@@ -10,7 +12,7 @@ class User:
     @classmethod
     async def db_start(cls):
         global db, cur
-        db = await sq.connect('/home/boris/TelegramBots/Health_AI/tg.db', isolation_level=None)
+        db = await sq.connect(str(pathlib.Path(__file__).parent.parent) + '/tg.db', isolation_level=None)
         db.row_factory = sq.Row
         cur = await db.cursor()
 

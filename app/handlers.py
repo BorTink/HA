@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pathlib
 
 import tiktoken
 from aiogram import Dispatcher, types, Bot
@@ -121,7 +122,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
         await message.answer('Стоимость подписки 399 руб/мес.')
         await asyncio.sleep(1)
         await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
-        with open('/home/boris/TelegramBots/Health_AI/img/logo.jpg', 'rb') as photo_file:
+        with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
             await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
         await asyncio.sleep(2)
 
