@@ -37,17 +37,16 @@ class ChatGPT:
             self.starting_message,
             {"role": "user", "content": message}
         ]
-        logger.info(message)
         encoding = tiktoken.get_encoding('cl100k_base')
         prompt_num_tokens = len(encoding.encode(message))
         logger.info(f'Длина промпта для расписания '
                     f'- {prompt_num_tokens} токенов')
 
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-3.5-turbo",
             messages=self.messages,
             max_tokens=3000,
-            temperature=0.5
+            temperature=0.2
         )
         answer = response["choices"][0]["message"].content
 

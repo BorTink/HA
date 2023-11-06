@@ -31,7 +31,7 @@ async def process_prompt(user_id, client_changes=None):
 
 async def split_workout(workout, weight_index, weight_value):
     part_before_kg = workout[weight_index].split(' ')
-    workout_in_process = ' '.join(part_before_kg[:-1]) + f' *{weight_value}*' + ' кг'
+    workout_in_process = ' '.join(part_before_kg[:-1]) + f' *[ {weight_value} ]*' + ' кг'
 
     first_half = ' кг'.join(workout[0:weight_index])
     if first_half:
@@ -51,7 +51,7 @@ async def process_workout(
 ):
     if user_id is None:
         user_id = message.from_user.id
-    workout_in_process = workout_in_process.replace('*', '')
+    workout_in_process = workout_in_process.replace('*[', '').replace(']*', '')
     data['workout'] = workout_in_process.split(' кг')
 
     if data['weight_index'] == len(data['workout']) - 2:
@@ -59,6 +59,7 @@ async def process_workout(
 
         for i in range(len(data['workout']) - 1):
             cur_segment = data['workout'][i].split('\n')[-1].split(' ')
+            cur_segment = [x for x in cur_segment if x]
             name = ' '.join(cur_segment[:-2])
             weight = cur_segment[-1]
 

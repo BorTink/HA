@@ -310,6 +310,7 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.start_workout)
     async with state.proxy() as data:
         data['weight_index'] = 0
+        data['workout'], data['day'] = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
         data['workout'] = data['workout'].split(' кг')
     await callback.message.answer(
         '☝После того, как пройдете тренировку (или по ходу выполнения упражнений), '

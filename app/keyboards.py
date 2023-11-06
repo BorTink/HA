@@ -53,14 +53,14 @@ times_per_week.add(times_per_week_1, times_per_week_2, times_per_week_3)
 
 trainings_tab = InlineKeyboardMarkup(resize_keyboard=True)
 trainings_tab_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab_2 = InlineKeyboardButton('Начать активную тренировку', callback_data='start_workout')
 trainings_tab_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
 trainings_tab.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_4)
 
 trainings_tab_without_prev = InlineKeyboardMarkup(resize_keyboard=True)
 trainings_tab_without_prev_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_without_prev_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab_without_prev_2 = InlineKeyboardButton('Начать активную тренировку', callback_data='start_workout')
 trainings_tab_without_prev_3 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
 trainings_tab_without_prev.add(
     trainings_tab_without_prev_1
@@ -68,7 +68,7 @@ trainings_tab_without_prev.add(
 
 trainings_tab_without_next = InlineKeyboardMarkup(resize_keyboard=True)
 trainings_tab_without_next_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_without_next_2 = InlineKeyboardButton('Начать тренировку', callback_data='start_workout')
+trainings_tab_without_next_2 = InlineKeyboardButton('Начать активную тренировку', callback_data='start_workout')
 trainings_tab_without_next_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_without_next.add(
     trainings_tab_without_next_1

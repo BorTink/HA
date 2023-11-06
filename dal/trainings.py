@@ -172,3 +172,16 @@ class Trainings:
         logger.info(f'Получено {len(active_trainigs_with_dates)} активных тренировок для напоминания')
 
         return [ReminderTraining(**res) for res in active_trainigs_with_dates]
+
+    @classmethod
+    async def get_active_training_by_user_id(cls, user_id):
+        await cur.execute(f"""
+            SELECT data, day
+            FROM trainings
+            WHERE active = 1
+            AND user_id = {user_id}
+            """)
+        active_training = await cur.fetchone()
+        logger.info(f'Активная тренировка пользователя {user_id} была получена')
+
+        return active_training if active_training else (None, None)
