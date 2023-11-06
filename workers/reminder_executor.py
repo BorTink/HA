@@ -1,7 +1,7 @@
-from datetime import datetime
-import asyncio
+import pathlib
 
 from loguru import logger
+import asyncio
 
 from reminder import Reminder
 import dal
@@ -21,5 +21,19 @@ async def enable_reminder():
 
 
 if __name__ == '__main__':
+    LOG_FILE_NAME = str(pathlib.Path(__file__).parent.parent) + '/log/reminder.log'
+    logger.add(
+        LOG_FILE_NAME,
+        level='DEBUG',
+        rotation='3 MB',
 
-    asyncio.run(enable_reminder())
+        backtrace=False,
+        catch=False,
+        diagnose=False,
+        compression='zip'
+    )
+
+    logger.opt(exception=False)
+
+    with logger.contextualize(ip=None, path=None, method=None):
+        asyncio.run(enable_reminder())
