@@ -1,3 +1,5 @@
+import re
+
 from loguru import logger
 import asyncio
 
@@ -63,7 +65,9 @@ async def process_workout(
             name = ' '.join(cur_segment[:-2])
             weight = cur_segment[-1]
 
-            next_segment = data['workout'][i + 1].split('\n')[0].split(' ')
+            next_segment = data['workout'][i + 1].split('\n')[0]
+            next_segment = re.sub("[\(].*?[\)]", "", next_segment)
+            next_segment = next_segment.split(' ')
             sets = next_segment[1]
             reps = next_segment[3]
             await dal.Exercises.add_exercise(name)

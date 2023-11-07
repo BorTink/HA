@@ -43,10 +43,10 @@ class ChatGPT:
                     f'- {prompt_num_tokens} токенов')
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=self.messages,
             max_tokens=3000,
-            temperature=0.2
+            temperature=0.5
         )
         answer = response["choices"][0]["message"].content
 

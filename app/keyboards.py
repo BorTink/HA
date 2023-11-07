@@ -75,10 +75,18 @@ trainings_tab_without_next.add(
 ).add(trainings_tab_without_next_2).add(trainings_tab_without_next_3)
 
 start_workout = InlineKeyboardMarkup(resize_keyboard=True)
-start_workout_1 = InlineKeyboardButton('Ввести показатели', callback_data='insert_weights')
-start_workout.add(start_workout_1)
+start_workout_1 = InlineKeyboardButton('Начать тренировку', callback_data='insert_weights')
+start_workout_2 = InlineKeyboardButton('Вернуться назад', callback_data='go_back')
+start_workout.add(start_workout_1).add(start_workout_2)
 
 insert_weights_in_workout = InlineKeyboardMarkup(resize_keyboard=True)
 insert_weights_in_workout_1 = InlineKeyboardButton('Пропустить', callback_data='skip_weight')
 insert_weights_in_workout_2 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
-insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)
+insert_weights_in_workout_3 = InlineKeyboardButton('Покинуть тренировку', callback_data='leave_workout')
+insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2).add(insert_weights_in_workout_3)
+
+leave_workout = InlineKeyboardMarkup(resize_keyboard=True)
+leave_workout_1 = InlineKeyboardButton('Да', callback_data='yes')
+leave_workout_2 = InlineKeyboardButton('Нет', callback_data='no')
+leave_workout.add(leave_workout_1, leave_workout_2)
+
