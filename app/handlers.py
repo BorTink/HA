@@ -402,10 +402,9 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.start_workout, text='no')
 async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['weight_index'] -= 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
+        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id, return_to_training=True)
 
 
 @dp.message_handler(state=BaseStates.add_weight)

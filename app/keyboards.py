@@ -9,10 +9,8 @@ recipes_1 = InlineKeyboardButton('Вернуться к расписанию', c
 recipes.add(recipes_1)
 
 main = InlineKeyboardMarkup(resize_keyboard=True)
-main_1 = InlineKeyboardButton('Сгенерировать тренировки', callback_data='generate_trainings')
 main_2 = InlineKeyboardButton('Показать расписание', callback_data='SHOW_TIMETABLE')
-main_3 = InlineKeyboardButton('Заново заполнить анкету (ДЛЯ ТЕСТОВ)', callback_data='update_data')
-main.add(main_1).add(main_2).add(main_3)
+main.add(main_2)
 
 main_new = InlineKeyboardMarkup(resize_keyboard=True)
 main_new_1 = InlineKeyboardButton('Приступить к созданию тренировок', callback_data='insert_data')

@@ -49,11 +49,12 @@ async def process_workout(
         state,
         message,
         kb,
-        user_id=None
+        user_id=None,
+        return_to_training=False
 ):
     if user_id is None:
         user_id = message.from_user.id
-    workout_in_process = workout_in_process.replace('*[', '').replace(']*', '')
+    workout_in_process = workout_in_process.replace('*[ ', '').replace(' ]*', '')
     data['workout'] = workout_in_process.split(' кг')
 
     if data['weight_index'] == len(data['workout']) - 2:
@@ -114,7 +115,8 @@ async def process_workout(
         )
     else:
         await state.set_state(BaseStates.start_workout)
-        data['weight_index'] += 1
+        if not return_to_training:
+            data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await message.answer(
