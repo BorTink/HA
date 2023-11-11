@@ -66,40 +66,40 @@ async def start(message: types.Message, state: FSMContext):
         )
 
 
-@dp.callback_query_handler(state='*', text='generate_trainings')
-async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(
-        '⏳Подождите, составляем персональную тренировку'
-    )
-
-    await state.set_state(BaseStates.show_trainings)
-
-    await process_prompt(
-        user_id=callback.from_user.id
-    )
-
-    await dal.Trainings.update_active_training_by_day(
-        user_id=callback.from_user.id,
-        day=1,
-        active=True
-    )
-
-    training, new_day = await dal.Trainings.get_trainings_by_day(
-        user_id=callback.from_user.id,
-        day=1
-    )
-    async with state.proxy() as data:
-        data['day'] = 1
-        data['workout'] = training
-
-    await callback.message.answer(
-        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
-    )
-    await asyncio.sleep(2)
-    await callback.message.answer(
-        training,
-        reply_markup=kb.trainings_tab
-    )
+# @dp.callback_query_handler(state='*', text='generate_trainings')
+# async def generate_trainings(callback: types.CallbackQuery, state: FSMContext):
+#     temp_message = await callback.message.answer(
+#         '⏳Подождите, составляем персональную тренировку'
+#     )
+#
+#     await state.set_state(BaseStates.show_trainings)
+#
+#     await process_prompt(
+#         user_id=callback.from_user.id
+#     )
+#
+#     await dal.Trainings.update_active_training_by_day(
+#         user_id=callback.from_user.id,
+#         day=1,
+#         active=True
+#     )
+#
+#     training, new_day = await dal.Trainings.get_trainings_by_day(
+#         user_id=callback.from_user.id,
+#         day=1
+#     )
+#     async with state.proxy() as data:
+#         data['day'] = 1
+#         data['workout'] = training
+#
+#     await temp_message.edit_text(
+#         '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
+#     )
+#     await asyncio.sleep(2)
+#     await callback.message.answer(
+#         training,
+#         reply_markup=kb.trainings_tab
+#     )
 
 
 @dp.message_handler(state='*', text='Купить подписку')
@@ -186,7 +186,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         data['day'] = 1
         data['workout'] = training
 
-    await callback.message.answer(
+    await callback.message.edit_text(
         training,
         reply_markup=kb.trainings_tab
     )
@@ -203,7 +203,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
             if training:
                 data['day'] = new_day
                 data['workout'] = training
-                await callback.message.answer(
+                await callback.message.edit_text(
                     training,
                     reply_markup=kb.trainings_tab
                 )
@@ -215,7 +215,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['day'] = 1
                 data['workout'] = training
 
-                await callback.message.answer(
+                await callback.message.edit_text(
                     training,
                     reply_markup=kb.trainings_tab
                 )
@@ -229,7 +229,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['day'] = new_day
                 data['workout'] = training
 
-                await callback.message.answer(
+                await callback.message.edit_text(
                     training,
                     reply_markup=kb.trainings_tab
                 )
@@ -241,7 +241,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['day'] = new_day
                 data['workout'] = training
 
-                await callback.message.answer(
+                await callback.message.edit_text(
                     training,
                     reply_markup=kb.trainings_tab
                 )
@@ -254,9 +254,10 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContext):
     user = await dal.User.select_attributes(callback.from_user.id)
     if user.rebuilt == 1:
-        await callback.message.answer(
+        await callback.answer(
             'Вы уже пересобирали тренировку на неделю'
         )
+
     else:
         await callback.message.answer(
             'Введите что вы хотите изменить до 100 символов. '
@@ -362,15 +363,33 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='add_weight')
 async def add_weight(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['message'] = callback.message
+        await callback.message.edit_text(
+            'Введите новый вес',
+            reply_markup=kb.insert_weight
+        )
     await state.set_state(BaseStates.add_weight)
-    await callback.message.answer(
-        'Введите новый вес'
-    )
+
+
+@dp.message_handler(state=BaseStates.add_weight)
+async def add_weight(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            await message.delete()
+            data['message'] = await message.answer('Необходимо ввести численное значение')
+        elif int(message.text) > 300:
+            await message.delete()
+            data['message'] = await message.answer('Похоже вы опечатались, введите значение повторно')
+        else:
+            workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
+            await process_workout(workout_in_process, data, state, message, kb)
 
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='skip_weight')
 async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
+        data['message'] = callback.message
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
@@ -378,7 +397,9 @@ async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='leave_workout')
 async def ask_to_leave_workout(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
+    async with state.proxy() as data:
+        data['message'] = callback.message
+    await callback.message.edit_text(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
 
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='yes')
@@ -404,25 +425,13 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
     )
 
 
-@dp.callback_query_handler(state=BaseStates.start_workout, text='no')
+@dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text=['no', 'return_to_training'])
 async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id, return_to_training=True)
 
-
-@dp.message_handler(state=BaseStates.add_weight)
-async def add_weight(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    elif int(message.text) > 300:
-        await message.answer('Похоже вы опечатались, введите значение повторно')
-    else:
-        async with state.proxy() as data:
-            workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
-
-            await process_workout(workout_in_process, data, state, message, kb)
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
