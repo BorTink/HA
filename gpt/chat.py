@@ -25,7 +25,7 @@ class ChatGPT:
     def chat(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,
             temperature=0.5
@@ -43,7 +43,7 @@ class ChatGPT:
                     f'- {prompt_num_tokens} токенов')
 
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,
             temperature=0.5
