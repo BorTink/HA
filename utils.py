@@ -9,26 +9,22 @@ import dal
 
 
 async def process_prompt(user_id, client_changes=None):
-    logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
-    data = await dal.User.select_attributes(user_id)
+    logger.info(f'БЛАНКОВАЯ ГЕНЕРАЦИЯ ДЛЯ ПОЛЬЗОВАТЕЛЯ с user_id = {user_id}')
 
-    trainings = await fill_prompt(data, client_changes)
-    await dal.Trainings.remove_prev_trainings(
-        user_id=int(user_id)
-    )
-    day_number = 1
-    for training in trainings:
-        if 'Отдых' in training:
-            day_number += 1
-        else:
+    # -------- FOR TESTING ---------
+    main_user = 63523707122
+
+    for day in range(1, 8):
+        training, day = await dal.Trainings.get_trainings_by_day(main_user, day)
+        if training:
             await dal.Trainings.update_trainings(
                 user_id=int(user_id),
-                day=day_number,
-                data=training.replace('"', '').replace("""'""", '')
+                day=day,
+                data=training
             )
-            day_number += 1
+    await dal.User.update_rebuilt_parameter(user_id)
 
-    return trainings
+    await asyncio.sleep(120)
 
 
 async def split_workout(workout, weight_index, weight_value):
