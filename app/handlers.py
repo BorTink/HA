@@ -365,7 +365,7 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
 async def add_weight(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['message'] = callback.message
-        await callback.message.edit_text(
+        data['temp_message'] = await callback.message.answer(
             'Введите новый вес',
             reply_markup=kb.insert_weight
         )
@@ -376,17 +376,22 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await data['message'].delete()
+            await data['temp_message'].delete()
             await message.delete()
 
-            data['message'] = await message.answer('Необходимо ввести численное значение')
+            data['temp_message'] = await message.answer(
+                'Необходимо ввести численное значение',
+                reply_markup=kb.insert_weight)
         elif int(message.text) > 300:
-            await data['message'].delete()
+            data['temp_message'].delete()
             await message.delete()
 
-            data['message'] = await message.answer('Похоже вы опечатались, введите значение повторно')
+            data['temp_message'] = await message.answer(
+                'Похоже вы опечатались, введите значение повторно',
+                reply_markup=kb.insert_weight)
         else:
             await message.delete()
+            await data['temp_message'].delete()
 
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
             await process_workout(workout_in_process, data, state, message, kb)
@@ -405,7 +410,7 @@ async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
 async def ask_to_leave_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['message'] = callback.message
-    await callback.message.edit_text(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
+    await callback.message.answer(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
 
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='yes')
@@ -423,8 +428,10 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
         data['day'] = 1
         data['workout'] = training
 
-    await state.set_state(BaseStates.show_trainings)
+        await data['message'].delete()
+        await callback.message.delete()
 
+    await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab
@@ -433,10 +440,8 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text=['no', 'return_to_training'])
 async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
-        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id, return_to_training=True)
+    await callback.message.delete()
+    await state.set_state(BaseStates.start_workout)
 
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
