@@ -376,12 +376,18 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
+            await data['message'].delete()
             await message.delete()
+
             data['message'] = await message.answer('Необходимо ввести численное значение')
         elif int(message.text) > 300:
+            await data['message'].delete()
             await message.delete()
+
             data['message'] = await message.answer('Похоже вы опечатались, введите значение повторно')
         else:
+            await message.delete()
+
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
             await process_workout(workout_in_process, data, state, message, kb)
 
