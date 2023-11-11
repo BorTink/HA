@@ -83,6 +83,10 @@ insert_weights_in_workout_2 = InlineKeyboardButton('Ввести вес', callba
 insert_weights_in_workout_3 = InlineKeyboardButton('Покинуть тренировку', callback_data='leave_workout')
 insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2).add(insert_weights_in_workout_3)
 
+insert_weight = InlineKeyboardMarkup(resize_keyboard=True)
+insert_weight_1 = InlineKeyboardButton('Вернуться к тренировке', callback_data='return_to_training')
+insert_weight.add(insert_weight_1)
+
 leave_workout = InlineKeyboardMarkup(resize_keyboard=True)
 leave_workout_1 = InlineKeyboardButton('Да', callback_data='yes')
 leave_workout_2 = InlineKeyboardButton('Нет', callback_data='no')

@@ -79,9 +79,8 @@ async def process_workout(
                 weight=weight,
                 reps=reps
             )
-
-        await message.answer('Вы закончили тренировку')
-        await asyncio.sleep(0.5)
+        await data['message'].edit_text('Вы закончили тренировку')
+        await asyncio.sleep(3)
         await dal.Trainings.update_trainings(
             user_id=user_id,
             day=data['day'],
@@ -119,7 +118,7 @@ async def process_workout(
             data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await message.answer(
+        await data['message'].edit_text(
             workout_in_process,
             reply_markup=kb.insert_weights_in_workout,
             parse_mode='Markdown'
