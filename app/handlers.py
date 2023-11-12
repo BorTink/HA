@@ -141,7 +141,8 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                is_flexible=True,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
-                               payload='test-invoice-payload')
+                               payload='test-invoice-payload',
+                               reply_markup=)
 
 
 @dp.pre_checkout_query_handler(lambda query: True)
@@ -473,58 +474,68 @@ async def create_edit(callback: types.CallbackQuery):
 
 @dp.callback_query_handler(state=PersonChars.gender)
 async def add_sex(callback: types.CallbackQuery, state: FSMContext):
-    if callback.data == 'gender_man':
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if callback.data == 'gender_man':
             data['gender'] = 'Мужской'
-    if callback.data == 'gender_woman':
-        async with state.proxy() as data:
+        if callback.data == 'gender_woman':
             data['gender'] = 'Женский'
 
-    await callback.message.answer('Введите свой возраст (Полных лет)')
-    await PersonChars.age.set()
+        data['info_message'] = await callback.message.edit_text('Введите свой возраст (Полных лет)')
+        await PersonChars.age.set()
 
 
 @dp.message_handler(state=PersonChars.age)
 async def add_age(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            await data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение. '
+                                                        'Введите свой возраст (Полных лет)')
+        else:
             data['age'] = int(message.text)
 
-        await message.answer(
-            'Укажите свой рост (см)'
-        )
-        await PersonChars.height.set()
+            await message.delete()
+            await data['info_message'].edit_text(
+                'Укажите свой рост (см)'
+            )
+            await PersonChars.height.set()
 
 
 @dp.message_handler(state=PersonChars.height)
 async def add_height(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            await data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+        else:
             data['height'] = int(message.text)
 
-        await message.answer(
-            'Введите свой вес (кг)'
-        )
-        await PersonChars.weight.set()
+            await data['info_message'].edit_text(
+                'Введите свой вес (кг)'
+            )
+            await PersonChars.weight.set()
 
 
 @dp.message_handler(state=PersonChars.weight)
 async def add_weight(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            await data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+        else:
             data['weight'] = int(message.text)
 
-        await message.answer(
-            'Оцените ваш уровень физической подготовки',
-            reply_markup=kb.gym_experience
-        )
-        await PersonChars.gym_experience.set()
+            await data['info_message'].edit_text(
+                'Оцените ваш уровень физической подготовки',
+                reply_markup=kb.gym_experience
+            )
+            await PersonChars.gym_experience.set()
 
 
 @dp.callback_query_handler(state=PersonChars.gym_experience)

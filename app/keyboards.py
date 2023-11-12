@@ -4,6 +4,8 @@ always_markup = ReplyKeyboardMarkup(resize_keyboard=True)
 always_markup_1 = KeyboardButton('Купить подписку')
 always_markup.add(always_markup_1)
 
+
+
 recipes = InlineKeyboardMarkup(resize_keyboard=True)
 recipes_1 = InlineKeyboardButton('Вернуться к расписанию', callback_data='back_to_timetable')
 recipes.add(recipes_1)
