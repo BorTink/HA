@@ -202,7 +202,8 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         training,
-        reply_markup=kb.trainings_tab
+        reply_markup=kb.trainings_tab,
+        parse_mode='HTML'
     )
 
 
@@ -219,7 +220,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['workout'] = training
                 await callback.message.edit_text(
                     training,
-                    reply_markup=kb.trainings_tab
+                    reply_markup=kb.trainings_tab,
+                    parse_mode='HTML'
                 )
             else:
                 training, new_day = await dal.Trainings.get_trainings_by_day(
@@ -231,7 +233,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 
                 await callback.message.edit_text(
                     training,
-                    reply_markup=kb.trainings_tab
+                    reply_markup=kb.trainings_tab,
+                    parse_mode='HTML'
                 )
 
         elif callback.data == 'prev_workout':
@@ -245,7 +248,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 
                 await callback.message.edit_text(
                     training,
-                    reply_markup=kb.trainings_tab
+                    reply_markup=kb.trainings_tab,
+                    parse_mode='HTML'
                 )
             else:
                 training, new_day = await dal.Trainings.get_prev_training(
@@ -257,7 +261,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 
                 await callback.message.edit_text(
                     training,
-                    reply_markup=kb.trainings_tab
+                    reply_markup=kb.trainings_tab,
+                    parse_mode='HTML'
                 )
         else:
             logger.error(f'Некорректная data в callback_query - {callback.data}')
@@ -371,7 +376,7 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer(
             workout_in_process,
             reply_markup=kb.insert_weights_in_workout,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )
 
 

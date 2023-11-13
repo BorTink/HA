@@ -21,10 +21,48 @@ async def process_prompt(user_id, client_changes=None):
         if 'Отдых' in training:
             day_number += 1
         else:
+            cur_training = training.replace('"', '').replace("""'""", '').split('\n')[1:]
+            final_training = []
+            for line in cur_training:
+                if len(line) < 5 or 'Разминка' in line:
+                    final_training.append(line)
+                    continue
+
+                exercise_name = line.split(' -')[0]
+                exercise_name_words = exercise_name.split()
+                similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
+
+                if similar_exercises:
+                    temp_exercises = []
+
+                    for word in exercise_name_words:
+                        for exercise in similar_exercises:
+                            if word in exercise.name:
+                                temp_exercises.append(exercise)
+
+                        if not temp_exercises:
+                            break
+
+                        similar_exercises = temp_exercises
+                        temp_exercises = []
+
+                    min_len_word = 100000
+                    final_exercise = None
+                    for exercise in similar_exercises:
+                        if len(exercise.name) < min_len_word:
+                            min_len_word = len(exercise.name)
+                            final_exercise = exercise
+
+                    exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
+
+                final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
+
+            final_training = '\n'.join(final_training)
+
             await dal.Trainings.update_trainings(
                 user_id=int(user_id),
                 day=day_number,
-                data=training.replace('"', '').replace("""'""", '')
+                data=final_training
             )
             day_number += 1
 
@@ -121,5 +159,5 @@ async def process_workout(
         await data['message'].edit_text(
             workout_in_process,
             reply_markup=kb.insert_weights_in_workout,
-            parse_mode='Markdown'
+            parse_mode='HTML'
         )

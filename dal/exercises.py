@@ -1,6 +1,7 @@
 from loguru import logger
 
 from dal.user import User
+from schemas import BaseExercise
 
 
 class Exercises:
@@ -32,6 +33,22 @@ class Exercises:
         else:
             logger.debug(f'Инструкция к тренировке {name} не была найдена. Производится поиск инструкции')
             return None  # TODO: Интегрировать YouTube Search API для поиска инструкций
+
+    @classmethod
+    async def get_all_similar_exercises_by_word(cls, word):
+        await cur.execute(f"""
+        SELECT title as name, url as link
+        FROM website_exercises
+        WHERE name LIKE '%{word}%'
+        """) # TODO: Вернуть на name, link
+        similar_exercises = await cur.fetchall()
+
+        if similar_exercises:
+            logger.debug(f'Было найдено {len(similar_exercises)} упражнений по слову {word}')
+            return [BaseExercise(**res) for res in similar_exercises]
+        else:
+            logger.debug(f'Было найдено 0 упражнений по слову {word}')
+            return 0
 
     @classmethod
     async def add_exercise(cls, name):
