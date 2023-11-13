@@ -2,9 +2,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 
 always_markup = ReplyKeyboardMarkup(resize_keyboard=True)
 always_markup_1 = KeyboardButton('Купить подписку')
-always_markup.add(always_markup_1)
-
-
+always_markup_2 = KeyboardButton('Вернуться в главное меню')
+always_markup.add(always_markup_1).add(always_markup_2)
 
 recipes = InlineKeyboardMarkup(resize_keyboard=True)
 recipes_1 = InlineKeyboardButton('Вернуться к расписанию', callback_data='back_to_timetable')

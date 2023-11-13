@@ -36,34 +36,34 @@ async def start(message: types.Message, state: FSMContext):
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
     logger.info(f'user - {user}')
-
-    if user:
-        await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
-        await message.answer('Выберите действие',
-                             reply_markup=kb.main)
-    else:
-        await message.answer(
-            '👋 Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
-            'под ваши индивидуальные запросы.',
-            parse_mode='Markdown'
-        )
-        await asyncio.sleep(1)
-        await message.answer(
-            '💪 С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.',
-            parse_mode='Markdown'
-        )
-        await asyncio.sleep(1)
-        await message.answer(
-            '_Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, '
-            'но несут исключительно рекомендательный характер._',
-            parse_mode='Markdown'
-        )
-        await asyncio.sleep(1)
-        await message.answer(
-            '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
-            reply_markup=kb.main_new,
-            parse_mode='Markdown'
-        )
+    async with state.proxy() as data:
+        if user:
+            await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
+            await message.answer('Выберите действие',
+                                 reply_markup=kb.main)
+        else:
+            await message.answer(
+                '👋 Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
+                'под ваши индивидуальные запросы.',
+                parse_mode='Markdown'
+            )
+            await asyncio.sleep(1)
+            await message.answer(
+                '💪 С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.',
+                parse_mode='Markdown'
+            )
+            await asyncio.sleep(1)
+            await message.answer(
+                '_Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, '
+                'но несут исключительно рекомендательный характер._',
+                parse_mode='Markdown'
+            )
+            await asyncio.sleep(1)
+            await message.answer(
+                '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
+                reply_markup=kb.main_new,
+                parse_mode='Markdown'
+            )
 
 
 # @dp.callback_query_handler(state='*', text='generate_trainings')
@@ -104,18 +104,21 @@ async def start(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state='*', text='Купить подписку')
 async def buy_subscription(message: types.Message, state: FSMContext):
-    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
-        await message.answer(
-            '🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
-            'рекомендуем оформить ежемесячную подписку!'
-        )
-        await asyncio.sleep(1)
-        await message.answer(
-            '📈 Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
-            'для получения максимальной пользы.'
-        )
-        await asyncio.sleep(1)
-        await message.answer("""
+
+    with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
+        await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
+    await asyncio.sleep(1)
+    await message.answer(
+        '🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
+        'рекомендуем оформить ежемесячную подписку!'
+    )
+    await asyncio.sleep(1)
+    await message.answer(
+        '📈 Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
+        'для получения максимальной пользы.'
+    )
+    await asyncio.sleep(1)
+    await message.answer("""
 Основные преимущества подписки:
 ▫️Регулярное обновление программы тренировок;
 ▫️Высокая персонализация (с опорой на ваши результаты);
@@ -123,14 +126,13 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 ▫️Возможность обновлять свои данные;
 ▫️Поддержка на всём периоде занятий
 """)
-        await asyncio.sleep(1)
-        await message.answer('Стоимость подписки 399 руб/мес.')
-        await asyncio.sleep(1)
-        await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
-        with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
-            await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
-        await asyncio.sleep(2)
+    await asyncio.sleep(1)
+    await message.answer('Стоимость подписки 399 руб/мес.')
+    await asyncio.sleep(1)
+    await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
+    await asyncio.sleep(2)
 
+    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         await bot.send_invoice(message.chat.id,
                                title='Подписка на бота',
                                description='Подписка на бота на 1 месяц',
@@ -141,8 +143,19 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                is_flexible=True,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
-                               payload='test-invoice-payload',
-                               reply_markup=)
+                               payload='test-invoice-payload')
+    else:
+        await bot.send_invoice(message.chat.id,
+                               title='Подписка на бота',
+                               description='Подписка на бота на 1 месяц',
+                               provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               currency='rub',
+                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
+                               photo_width=1270,
+                               is_flexible=True,
+                               prices=[PRICE],
+                               start_parameter='one-month-subscription',
+                               payload='subscription-payload')
 
 
 @dp.pre_checkout_query_handler(lambda query: True)
@@ -161,12 +174,12 @@ async def successful_payment(message: types.Message):
                          f'{message.successful_payment.currency} прошел успешно')
 
 
-@dp.callback_query_handler(state='*', text='back_to_menu')
-async def back_to_menu(callback: types.CallbackQuery, state: FSMContext):
+@dp.message_handler(state='*', text='Вернуться в главное меню')
+async def back_to_menu(message: types.Message, state: FSMContext):
     if state:
         await state.finish()
 
-    await callback.message.answer(
+    await message.answer(
         'Выберите действие',
         reply_markup=kb.main
     )
@@ -514,6 +527,7 @@ async def add_height(message: types.Message, state: FSMContext):
         else:
             data['height'] = int(message.text)
 
+            await message.delete()
             await data['info_message'].edit_text(
                 'Введите свой вес (кг)'
             )
@@ -531,6 +545,7 @@ async def add_weight(message: types.Message, state: FSMContext):
         else:
             data['weight'] = int(message.text)
 
+            await message.delete()
             await data['info_message'].edit_text(
                 'Оцените ваш уровень физической подготовки',
                 reply_markup=kb.gym_experience
@@ -543,13 +558,13 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['gym_experience'] = callback.data
     if callback.data in ['medium', 'experienced']:
-        await callback.message.answer(
+        await callback.message.edit_text(
             'Знаете ли вы свои макимальные показатели веса в жиме лежа, становой тяге и приседаниях со штангой?',
             reply_markup=kb.max_results
         )
         await PersonChars.max_results.set()
     else:
-        await callback.message.answer(
+        await callback.message.edit_text(
             'Каких результатов вы ожидаете от тренировок?',
             reply_markup=kb.expected_results
         )
@@ -557,62 +572,75 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(state=PersonChars.max_results)
-async def ask_max_results(callback: types.CallbackQuery):
-    if callback.data == 'yes':
-        await callback.message.answer(
-            'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
-        )
-        await PersonChars.bench_results.set()
+async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        if callback.data == 'yes':
+            data['info_message'] = await callback.message.edit_text(
+                'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
+            )
+            await PersonChars.bench_results.set()
 
-    if callback.data == 'no':
-        await callback.message.answer(
-            'Каких результатов вы ожидаете от тренировок?',
-            reply_markup=kb.expected_results
-        )
-        await PersonChars.goals.set()
+        if callback.data == 'no':
+            data['info_message'] = await callback.message.edit_text(
+                'Каких результатов вы ожидаете от тренировок?',
+                reply_markup=kb.expected_results
+            )
+            await PersonChars.goals.set()
 
 
 @dp.message_handler(state=PersonChars.bench_results)
 async def add_bench_results(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+        else:
             data['bench_results'] = int(message.text)
 
-        await message.answer(
-            'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).'
-        )
-        await PersonChars.deadlift_results.set()
+            await message.delete()
+            data['info_message'] = await data['info_message'].edit_text(
+                'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).'
+            )
+            await PersonChars.deadlift_results.set()
 
 
 @dp.message_handler(state=PersonChars.deadlift_results)
 async def add_deadlift_results(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+        else:
             data['deadlift_results'] = int(message.text)
 
-        await message.answer(
-            'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).'
-        )
-        await PersonChars.squats_results.set()
+            await message.delete()
+            data['info_message'] = await data['info_message'].edit_text(
+                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).'
+            )
+            await PersonChars.squats_results.set()
 
 
 @dp.message_handler(state=PersonChars.squats_results)
 async def add_squats_results(message: types.Message, state: FSMContext):
-    if message.text.isdigit() is False:
-        await message.answer('Необходимо ввести численное значение')
-    else:
-        async with state.proxy() as data:
+    async with state.proxy() as data:
+        if message.text.isdigit() is False:
+            data['info_message'].delete()
+            await message.delete()
+
+            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+        else:
             data['squats_results'] = int(message.text)
 
-        await message.answer(
-            'Каких результатов вы ожидаете от тренировок?',
-            reply_markup=kb.expected_results
-        )
-        await PersonChars.goals.set()
+            await message.delete()
+            await data['info_message'].edit_text(
+                'Каких результатов вы ожидаете от тренировок?',
+                reply_markup=kb.expected_results
+            )
+            await PersonChars.goals.set()
 
 
 @dp.callback_query_handler(state=PersonChars.goals)
@@ -620,10 +648,10 @@ async def add_goal(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['goals'] = callback.data
 
-    await callback.message.answer(
-        'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
-    )
-    await PersonChars.focus.set()
+        data['info_message'] = await callback.message.edit_text(
+            'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
+        )
+        await PersonChars.focus.set()
 
 
 @dp.message_handler(state=PersonChars.focus)
@@ -631,11 +659,12 @@ async def add_squats_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['goals'] += '. Additionally, ' + message.text
 
-    await message.answer(
-        'Насколько интенсивно вы готовы заниматься? Укажите интенсивность тренировок.',
-        reply_markup=kb.intensity
-    )
-    await PersonChars.intensity.set()
+        await message.delete()
+        await data['info_message'].edit_text(
+            'Насколько интенсивно вы готовы заниматься? Укажите интенсивность тренировок.',
+            reply_markup=kb.intensity
+        )
+        await PersonChars.intensity.set()
 
 
 @dp.callback_query_handler(state=PersonChars.intensity)
@@ -643,12 +672,12 @@ async def add_intensity(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['intensity'] = callback.data
 
-    await callback.message.answer(
-        'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
-        '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
-        'Напишите до 100 символов.'
-    )
-    await PersonChars.health_restrictions.set()
+        data['info_message'] = await callback.message.edit_text(
+            'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
+            '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
+            'Напишите до 100 символов.'
+        )
+        await PersonChars.health_restrictions.set()
 
 
 @dp.message_handler(state=PersonChars.health_restrictions)
@@ -656,13 +685,14 @@ async def add_intensity(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['health_restrictions'] = message.text
 
-    await message.answer(
-        'Укажите одним числом сколько раз в неделю вы готовы заниматься. '
-        '(Рекомендованное количество: 3-4 дня в неделю, ввести возможно от 2 до 4 дней)',
-        reply_markup=kb.times_per_week
-    )
+        await message.delete()
+        await data['info_message'].edit_text(
+            'Укажите одним числом сколько раз в неделю вы готовы заниматься. '
+            '(Рекомендованное количество: 3-4 дня в неделю, ввести возможно от 2 до 4 дней)',
+            reply_markup=kb.times_per_week
+        )
 
-    await PersonChars.times_per_week.set()
+        await PersonChars.times_per_week.set()
 
 
 @dp.callback_query_handler(state=PersonChars.times_per_week)
@@ -679,7 +709,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await dal.User.add_attributes(state, callback.from_user.id)
     await state.set_state(BaseStates.show_trainings)
 
-    await callback.message.answer(
+    await callback.message.edit_text(
         '⏳Подождите, составляем персональную тренировку'
     )
 
@@ -700,7 +730,8 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         data['workout'] = training
 
     await callback.message.answer(
-        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!'
+        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!',
+        reply_markup=kb.always_markup
     )
     await asyncio.sleep(2)
     await callback.message.answer(
@@ -729,30 +760,30 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
 #     await message.reply(reply)
 
 
-# @dp.message_handler(state=None)
-# async def answer(message: types.Message):
-#     try:
-#         encoding = tiktoken.get_encoding('cl100k_base')
-#         prompt_num_tokens = len(encoding.encode(message.text))
-#         logger.info(f'Сообщение от user_id {message.from_user.id} - {message.text}')
-#
-#         logger.info(f'Длина промпта для расписания '
-#                     f'- {prompt_num_tokens} токенов')
-#         await message.reply(f'Длина промпта для расписания '
-#                     f'- {prompt_num_tokens} токенов')
-#
-#         reply = ChatGPT().chat(message.text)
-#         reply_num_tokens = len(encoding.encode(reply))
-#         await message.answer(f'Длина ответа '
-#                     f'- {reply_num_tokens} токенов. '
-#                     f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
-#
-#         logger.info(f'Длина ответа '
-#                     f'- {reply_num_tokens} токенов. '
-#                     f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
-#
-#         logger.info(f'Ответ - {reply}')
-#         await message.reply(reply)
-#     except Exception as exc:
-#         logger.info(f'Ошибка - {exc}')
-#         await message.reply(f'При генерации ответа произошла ошибка - {exc}')
+@dp.message_handler(state=None)
+async def answer(message: types.Message):
+    try:
+        encoding = tiktoken.get_encoding('cl100k_base')
+        prompt_num_tokens = len(encoding.encode(message.text))
+        logger.info(f'Сообщение от user_id {message.from_user.id} - {message.text}')
+
+        logger.info(f'Длина промпта для расписания '
+                    f'- {prompt_num_tokens} токенов')
+        await message.reply(f'Длина промпта для расписания '
+                    f'- {prompt_num_tokens} токенов')
+
+        reply = ChatGPT().chat(message.text)
+        reply_num_tokens = len(encoding.encode(reply))
+        await message.answer(f'Длина ответа '
+                    f'- {reply_num_tokens} токенов. '
+                    f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
+
+        logger.info(f'Длина ответа '
+                    f'- {reply_num_tokens} токенов. '
+                    f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
+
+        logger.info(f'Ответ - {reply}')
+        await message.reply(reply)
+    except Exception as exc:
+        logger.info(f'Ошибка - {exc}')
+        await message.reply(f'При генерации ответа произошла ошибка - {exc}')
