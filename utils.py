@@ -12,7 +12,7 @@ async def process_prompt(user_id, client_changes=None):
     logger.info(f'БЛАНКОВАЯ ГЕНЕРАЦИЯ ДЛЯ ПОЛЬЗОВАТЕЛЯ с user_id = {user_id}')
 
     # -------- FOR TESTING ---------
-    main_user = 63523707122
+    main_user = 635237071
 
     for day in range(1, 8):
         training, day = await dal.Trainings.get_trainings_by_day(main_user, day)
