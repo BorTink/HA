@@ -185,6 +185,46 @@ async def back_to_menu(message: types.Message, state: FSMContext):
     )
 
 
+@dp.message_handler(state='*', text='Техподдержка / Оставить отзыв')
+async def support(message: types.Message, state: FSMContext):
+    await state.set_state(BaseStates.support)
+
+    await message.answer(
+        'Техподдержка или оставить отзыв?',
+        reply_markup=kb.support
+    )
+
+
+@dp.callback_query_handler(state=BaseStates.support, text='tech_support')
+async def tech_support(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text('Со всеми вопросами пишите сюда https://t.me/sergey_akhapkin1703')
+
+    await state.finish()
+
+    await callback.message.answer(
+        'Выберите действие',
+        reply_markup=kb.main
+    )
+
+
+@dp.callback_query_handler(state=BaseStates.support, text='add_review')
+async def add_review(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(BaseStates.add_review)
+    await callback.message.edit_text('Напишите в следующем сообщении свой отзыв')
+
+
+@dp.message_handler(state=BaseStates.add_review)
+async def write_review(message: types.Message, state: FSMContext):
+    await dal.Reviews.add_review(message.from_user.id, message.text)
+
+    await message.answer('Спасибо за ваш отзыв!')
+    await state.finish()
+
+    await message.answer(
+        'Выберите действие',
+        reply_markup=kb.main
+    )
+
 # ----- УПРАВЛЕНИЕ РАСПИСАНИЕМ ---------
 
 

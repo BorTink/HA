@@ -12,6 +12,7 @@ async def on_startup(_):
     await dal.Exercises.create_exercises()
     await dal.UserResults.create_user_results()
     await dal.Trainings.create_trainings()
+    await dal.Reviews.create_reviews()
     logger.info(f'Бот успешно запущен!')
 
 
