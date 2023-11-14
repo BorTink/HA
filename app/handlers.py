@@ -698,30 +698,30 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
 #     await message.reply(reply)
 
 
-# @dp.message_handler(state=None)
-# async def answer(message: types.Message):
-#     try:
-#         encoding = tiktoken.get_encoding('cl100k_base')
-#         prompt_num_tokens = len(encoding.encode(message.text))
-#         logger.info(f'Сообщение от user_id {message.from_user.id} - {message.text}')
-#
-#         logger.info(f'Длина промпта для расписания '
-#                     f'- {prompt_num_tokens} токенов')
-#         await message.reply(f'Длина промпта для расписания '
-#                     f'- {prompt_num_tokens} токенов')
-#
-#         reply = ChatGPT().chat(message.text)
-#         reply_num_tokens = len(encoding.encode(reply))
-#         await message.answer(f'Длина ответа '
-#                     f'- {reply_num_tokens} токенов. '
-#                     f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
-#
-#         logger.info(f'Длина ответа '
-#                     f'- {reply_num_tokens} токенов. '
-#                     f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
-#
-#         logger.info(f'Ответ - {reply}')
-#         await message.reply(reply)
-#     except Exception as exc:
-#         logger.info(f'Ошибка - {exc}')
-#         await message.reply(f'При генерации ответа произошла ошибка - {exc}')
+@dp.message_handler(state=None)
+async def answer(message: types.Message):
+    try:
+        encoding = tiktoken.get_encoding('cl100k_base')
+        prompt_num_tokens = len(encoding.encode(message.text))
+        logger.info(f'Сообщение от user_id {message.from_user.id} - {message.text}')
+
+        logger.info(f'Длина промпта для расписания '
+                    f'- {prompt_num_tokens} токенов')
+        await message.reply(f'Длина промпта для расписания '
+                    f'- {prompt_num_tokens} токенов')
+
+        reply = ChatGPT().chat(message.text)
+        reply_num_tokens = len(encoding.encode(reply))
+        await message.answer(f'Длина ответа '
+                    f'- {reply_num_tokens} токенов. '
+                    f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
+
+        logger.info(f'Длина ответа '
+                    f'- {reply_num_tokens} токенов. '
+                    f'В сумме вышло {prompt_num_tokens + reply_num_tokens} токенов')
+
+        logger.info(f'Ответ - {reply}')
+        await message.reply(reply)
+    except Exception as exc:
+        logger.info(f'Ошибка - {exc}')
+        await message.reply(f'При генерации ответа произошла ошибка - {exc}')
