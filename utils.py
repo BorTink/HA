@@ -21,7 +21,9 @@ async def process_prompt(user_id, client_changes=None):
         if 'Отдых' in training:
             day_number += 1
         else:
-            cur_training = training.replace('"', '').replace("""'""", '').split('\n')[1:]
+            cur_training = training.replace('"', '').replace("""'""", '')
+            cur_training = cur_training.replace('Подъемы', 'Подъем').split('\n')[1:]
+
             final_training = []
             for line in cur_training:
                 if len(line) < 5 or 'Разминка' in line:
