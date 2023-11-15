@@ -6,6 +6,7 @@ import tiktoken
 from aiogram import Dispatcher, types, Bot
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.types.message import ContentType
 
@@ -22,8 +23,8 @@ from gpt.chat import ChatGPT
 
 load_dotenv()
 bot = Bot(os.getenv('TOKEN'))
-
-dp = Dispatcher(bot=bot, storage=MemoryStorage())  # storage впоследствии изменить на redis
+storage = RedisStorage2('localhost', 6379, db=5, pool_size=10, prefix='my_fsm_key')
+dp = Dispatcher(bot=bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
 
 PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=399*100)
@@ -410,11 +411,12 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.start_workout, text='add_weight')
 async def add_weight(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['message'] = callback.message
-        data['temp_message'] = await callback.message.answer(
+        data['message'] = callback.message.message_id
+        temp_message = await callback.message.answer(
             'Введите новый вес',
             reply_markup=kb.insert_weight
         )
+        data['temp_message'] = temp_message.message_id
     await state.set_state(BaseStates.add_weight)
 
 
@@ -422,22 +424,26 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await data['temp_message'].delete()
+            await bot.delete_message(message.chat.id, data['temp_message'])
             await message.delete()
 
-            data['temp_message'] = await message.answer(
+            temp_message = await message.answer(
                 'Необходимо ввести численное значение',
                 reply_markup=kb.insert_weight)
+            data['temp_message'] = temp_message.message_id
+
         elif int(message.text) > 300:
-            data['temp_message'].delete()
+            await bot.delete_message(message.chat.id, data['temp_message'])
             await message.delete()
 
-            data['temp_message'] = await message.answer(
+            temp_message = await message.answer(
                 'Похоже вы опечатались, введите значение повторно',
                 reply_markup=kb.insert_weight)
+            data['temp_message'] = temp_message.message_id
+
         else:
             await message.delete()
-            await data['temp_message'].delete()
+            await bot.delete_message(message.chat.id, data['temp_message'])
 
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
             await process_workout(workout_in_process, data, state, message, kb)
@@ -446,7 +452,7 @@ async def add_weight(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.start_workout, text='skip_weight')
 async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['message'] = callback.message
+        data['message'] = callback.message.message_id
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
@@ -455,7 +461,7 @@ async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.start_workout, text='leave_workout')
 async def ask_to_leave_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['message'] = callback.message
+        data['message'] = callback.message.message_id
     await callback.message.answer(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
 
 
@@ -474,7 +480,7 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
         data['day'] = 1
         data['workout'] = training
 
-        await data['message'].delete()
+        await bot.delete_message(callback.message.chat.id, data['message'])
         await callback.message.delete()
 
     await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)

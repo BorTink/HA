@@ -91,6 +91,11 @@ async def process_workout(
         user_id=None,
         return_to_training=False
 ):
+    from app.handlers import bot
+
+    async def edit_message_text_def(text, chat_id, message_id, **kwargs):
+        await bot.edit_message_text(text, chat_id, message_id, **kwargs)
+
     if user_id is None:
         user_id = message.from_user.id
     workout_in_process = workout_in_process.replace('<b>[ ', '').replace(' ]</b>', '')
@@ -114,11 +119,17 @@ async def process_workout(
 
         first_training = await dal.User.check_if_first_training_by_user_id(user_id)
         if first_training:
-            await data['message'].edit_text('🎉 Поздравляем вас с первым успешным занятием!')
+            await edit_message_text_def(text='🎉 Поздравляем вас с первым успешным занятием!',
+                                                  chat_id=message.chat.id,
+                                                  message_id=data['message']
+                                                  )
             await asyncio.sleep(1)
 
         else:
-            await data['message'].edit_text('🎉 Поздравляем с успешным завершением тренировки!')
+            await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',
+                                                  chat_id=message.chat.id,
+                                                  message_id=data['message']
+                                                  )
             await asyncio.sleep(1)
 
         await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
@@ -199,11 +210,12 @@ async def process_workout(
             data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await data['message'].edit_text(
-            f'День {data["day"]}\n' + workout_in_process,
-            reply_markup=kb.insert_weights_in_workout,
-            parse_mode='HTML'
-        )
+        await edit_message_text_def(text=f'День {data["day"]}\n' + workout_in_process,
+                                    chat_id=message.chat.id,
+                                    message_id=data['message'],
+                                    reply_markup=kb.insert_weights_in_workout,
+                                    parse_mode='HTML'
+                                    )
 
 
 async def get_training_markup(user_id, day, ):
