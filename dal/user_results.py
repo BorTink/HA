@@ -13,22 +13,18 @@ class UserResults:
                     CREATE TABLE IF NOT EXISTS user_results(
                     id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     user_id INTEGER,
-                    exercise_id INT,
-                    sets INT,
-                    weight INT,
-                    reps INT,
-                    time INT
+                    exercise_name INT,
+                    weight INT
                     )
                     """)
 
     @classmethod
-    async def update_user_results(cls, user_id, name, sets, weight, reps, time=None, ):
+    async def update_user_results(cls, user_id, name, weight):
         await cur.execute(f"""
         SELECT user_results.id
         FROM user_results
-        JOIN exercises ON exercises.name = '{name}'
         WHERE user_id = {user_id}
-        AND exercise_id = exercises.id
+        AND exercise_name = '{name}'
         """)
         user = await cur.fetchone()
 
@@ -39,15 +35,15 @@ class UserResults:
                     UPDATE user_results
                     SET
                     (
-                    exercise_id, sets, weight, reps, time
+                    exercise_name, weight
                     )
                     =
                     (
-                    (SELECT id FROM exercises WHERE name = '{name}'), {sets}, {weight}, {reps}, {time if time else 'null'}
+                    '{name}', {weight}
                     )
                     FROM exercises e 
                     WHERE user_id = {user_id}
-                    AND exercise_id = e.id
+                    AND exercise_name = '{name}'
                     """)
             logger.info(f'Результаты пользователя {user_id} для упражнения {name} были обновлены')
 
@@ -57,11 +53,11 @@ class UserResults:
             await cur.execute(f"""
                     INSERT INTO user_results
                     (
-                    user_id, exercise_id, sets, weight, reps, time
+                    user_id, exercise_name, weight
                     )
                     VALUES
                     (
-                    {user_id}, (SELECT id FROM exercises WHERE name = '{name}'), {sets}, {weight}, {reps}, {time if time else 'null'}
+                    {user_id}, '{name}', {weight}
                     )
                     """)
             logger.info(f'Результаты пользователя с id = {user_id} для упражнения {name} были внесены.')
@@ -71,20 +67,14 @@ class UserResults:
     @classmethod
     async def get_user_results_by_day_of_week(cls, user_id, day_of_week):
         await cur.execute(f"""
-            SELECT sets, weight, reps, time
+            SELECT weight
             FROM user_results
             WHERE user_id = {user_id}
             AND day_of_week = '{day_of_week}'
             """)
         user_results = await cur.fetchone()
-        user_results = dict(user_results)
         if not user_results:
             return None
 
-        if user_results['time'] is None:
-            user_results.pop('time')
-        else:
-            user_results.pop('sets')
-            user_results.pop('weight')
-            user_results.pop('reps')
+        user_results = dict(user_results)
         return user_results

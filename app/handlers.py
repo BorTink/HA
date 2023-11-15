@@ -12,7 +12,7 @@ from aiogram.types.message import ContentType
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils import process_prompt, split_workout, process_workout
+from utils import process_prompt, split_workout, process_workout, get_training_markup
 from .states import PersonChars, BaseStates
 from app import keyboards as kb
 import dal
@@ -118,18 +118,18 @@ async def buy_subscription(message: types.Message, state: FSMContext):
         'для получения максимальной пользы.'
     )
     await asyncio.sleep(1)
-    await message.answer("""
-Основные преимущества подписки:
-▫️Регулярное обновление программы тренировок;
-▫️Высокая персонализация (с опорой на ваши результаты);
-▫️Повышенная эффективность от тренировок;
-▫️Возможность обновлять свои данные;
-▫️Поддержка на всём периоде занятий
-""")
+    await message.answer("Основные преимущества подписки:\n"
+                         "▫️Регулярное обновление программы тренировок;\n"
+                         "▫️Высокая персонализация (с опорой на ваши результаты);\n"
+                         "▫️Повышенная эффективность от тренировок;\n"
+                         "▫️Возможность обновлять свои данные;\n"
+                         "▫️Поддержка на всём периоде занятий")
     await asyncio.sleep(1)
     await message.answer('Стоимость подписки 399 руб/мес.')
     await asyncio.sleep(1)
-    await message.answer('Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!')
+    await message.answer(
+        'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!'
+    )
     await asyncio.sleep(2)
 
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
@@ -241,8 +241,8 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         data['workout'] = training
 
     await callback.message.edit_text(
-        training,
-        reply_markup=kb.trainings_tab,
+        f'День {day}\n' + training,
+        reply_markup=kb.trainings_tab_without_prev,
         parse_mode='HTML'
     )
 
@@ -258,11 +258,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
             if training:
                 data['day'] = new_day
                 data['workout'] = training
-                await callback.message.edit_text(
-                    training,
-                    reply_markup=kb.trainings_tab,
-                    parse_mode='HTML'
-                )
+
             else:
                 training, new_day = await dal.Trainings.get_trainings_by_day(
                     user_id=callback.from_user.id,
@@ -270,12 +266,6 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 )
                 data['day'] = 1
                 data['workout'] = training
-
-                await callback.message.edit_text(
-                    training,
-                    reply_markup=kb.trainings_tab,
-                    parse_mode='HTML'
-                )
 
         elif callback.data == 'prev_workout':
             training, new_day = await dal.Trainings.get_prev_training(
@@ -286,11 +276,6 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['day'] = new_day
                 data['workout'] = training
 
-                await callback.message.edit_text(
-                    training,
-                    reply_markup=kb.trainings_tab,
-                    parse_mode='HTML'
-                )
             else:
                 training, new_day = await dal.Trainings.get_prev_training(
                     user_id=callback.from_user.id,
@@ -299,14 +284,12 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['day'] = new_day
                 data['workout'] = training
 
-                await callback.message.edit_text(
-                    training,
-                    reply_markup=kb.trainings_tab,
-                    parse_mode='HTML'
-                )
-        else:
-            logger.error(f'Некорректная data в callback_query - {callback.data}')
-            raise Exception
+        reply_markup = await get_training_markup(callback.from_user.id, data['day'])
+        await callback.message.edit_text(
+            f'День {data["day"]}\n' + training,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
 
 @dp.callback_query_handler(state=BaseStates.show_trainings, text='rebuild_workouts')
@@ -365,7 +348,8 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         '☝️ Помните, что указанный в упражнениях вес является приблизительным. '
         'Если вам тяжело или легко выполнять заданное количество упражнений с каким-то весом, '
-        'поменяйте его исходя из ваших возможностей.'
+        'поменяйте его исходя из ваших возможностей.',
+        reply_markup=types.ReplyKeyboardRemove()
     )
     await asyncio.sleep(1)
     await callback.message.answer(
@@ -397,6 +381,9 @@ async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext)
 
     await state.set_state(BaseStates.show_trainings)
 
+    await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
+    await asyncio.sleep(1)
+
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab
@@ -414,7 +401,7 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
         current_weight = data['workout'][0].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await callback.message.answer(
-            workout_in_process,
+            f'День {data["day"]}\n' + workout_in_process,
             reply_markup=kb.insert_weights_in_workout,
             parse_mode='HTML'
         )
@@ -490,11 +477,68 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
         await data['message'].delete()
         await callback.message.delete()
 
+    await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
+    await asyncio.sleep(1)
+
     await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab
     )
+
+
+@dp.callback_query_handler(state=BaseStates.show_trainings, text='get_subscription')
+async def get_subscription(callback: types.CallbackQuery, state: FSMContext):
+    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
+        await bot.send_invoice(callback.message.chat.id,
+                               title='Подписка на бота',
+                               description='Подписка на бота на 1 месяц',
+                               provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               currency='rub',
+                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
+                               photo_width=1270,
+                               is_flexible=True,
+                               prices=[PRICE],
+                               start_parameter='one-month-subscription',
+                               payload='test-invoice-payload')
+    else:
+        await bot.send_invoice(callback.message.chat.id,
+                               title='Подписка на бота',
+                               description='Подписка на бота на 1 месяц',
+                               provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               currency='rub',
+                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
+                               photo_width=1270,
+                               is_flexible=True,
+                               prices=[PRICE],
+                               start_parameter='one-month-subscription',
+                               payload='subscription-payload')
+
+
+@dp.callback_query_handler(state=BaseStates.show_trainings, text='subscribe_later')
+async def subscribe_later(callback: types.CallbackQuery, state: FSMContext):
+    training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+
+    async with state.proxy() as data:
+        next_training_in_days = int(day) - int(data['day'])
+
+        if next_training_in_days % 100 == 1:
+            day_word = 'день'
+        elif next_training_in_days % 100 in [2, 3, 4]:
+            day_word = 'дня'
+        else:
+            day_word = 'дней'
+
+        await callback.message.answer(f'Отличная работа! Так держать! '
+                                      f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
+        await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
+        await asyncio.sleep(1.5)
+
+        await callback.message.answer(
+            f'День {data["day"]}\n' + data['workout'],
+            reply_markup=kb.trainings_tab,
+            parse_mode='HTML'
+        )
 
 
 @dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text=['no', 'return_to_training'])
@@ -781,7 +825,8 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await asyncio.sleep(2)
     await callback.message.answer(
         training,
-        reply_markup=kb.trainings_tab
+        reply_markup=kb.trainings_tab,
+        parse_mode='Markdown'
     )
 
 
