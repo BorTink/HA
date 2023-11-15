@@ -116,7 +116,7 @@ END
 
     chat = ChatGPT()
 
-    timetable_days = re.split(r'День \d+:|День \d+и', chat.gpt_create_timetable(prompt_text))
+    timetable_days = re.split(r'День \d+:|День \d+ и|Дни', chat.gpt_create_timetable(prompt_text))
     training_days = []
     for i in range(len(timetable_days)):
         logger.info(f'День {i+1} - {timetable_days[i]}')
