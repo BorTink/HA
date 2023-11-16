@@ -141,7 +141,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
-                               is_flexible=True,
+                               is_flexible=False,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
                                payload='test-invoice-payload')
@@ -153,7 +153,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
-                               is_flexible=True,
+                               is_flexible=False,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
                                payload='subscription-payload')
@@ -161,7 +161,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 
 @dp.pre_checkout_query_handler(lambda query: True)
 async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True)
+    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True, error_message='FUCK')
 
 
 @dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
@@ -237,15 +237,23 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         user_id=callback.from_user.id,
         day=1
     )
-    async with state.proxy() as data:
-        data['day'] = 1
-        data['workout'] = training
 
-    await callback.message.edit_text(
-        f'День {day}\n' + training,
-        reply_markup=kb.trainings_tab_without_prev,
-        parse_mode='HTML'
-    )
+    if training:
+        async with state.proxy() as data:
+            data['day'] = 1
+            data['workout'] = training
+
+        await callback.message.edit_text(
+            f'День {day}\n' + training,
+            reply_markup=kb.trainings_tab_without_prev,
+            parse_mode='HTML'
+        )
+
+    else:
+        await callback.message.edit_text(
+            f"У вас нет доступных тренировок",
+            reply_markup=kb.main
+        )
 
 
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
