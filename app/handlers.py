@@ -596,7 +596,8 @@ async def add_sex(callback: types.CallbackQuery, state: FSMContext):
         if callback.data == 'gender_woman':
             data['gender'] = 'Женский'
 
-        data['info_message'] = await callback.message.edit_text('Введите свой возраст (Полных лет)')
+        info_message = await callback.message.edit_text('Введите свой возраст (Полных лет)')
+        data['info_message'] = info_message.message_id
         await PersonChars.age.set()
 
 
@@ -604,17 +605,21 @@ async def add_sex(callback: types.CallbackQuery, state: FSMContext):
 async def add_age(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение. '
-                                                        'Введите свой возраст (Полных лет)')
+            info_message = await message.answer('Необходимо ввести численное значение. '
+                                                'Введите свой возраст (Полных лет)')
+            data['info_message'] = info_message.message_id
+
         else:
             data['age'] = int(message.text)
 
             await message.delete()
-            await data['info_message'].edit_text(
-                'Укажите свой рост (см)'
+            await bot.edit_message_text(
+                'Укажите свой рост (см)',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
             )
             await PersonChars.height.set()
 
@@ -623,16 +628,19 @@ async def add_age(message: types.Message, state: FSMContext):
 async def add_height(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+            info_message = await message.answer('Необходимо ввести численное значение')
+            data['info_message'] = info_message.message_id
         else:
             data['height'] = int(message.text)
 
             await message.delete()
-            await data['info_message'].edit_text(
-                'Введите свой вес (кг)'
+            await bot.edit_message_text(
+                'Введите свой вес (кг)',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
             )
             await PersonChars.weight.set()
 
@@ -641,16 +649,19 @@ async def add_height(message: types.Message, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+            info_message = await message.answer('Необходимо ввести численное значение')
+            data['info_message'] = info_message.message_id
         else:
             data['weight'] = int(message.text)
 
             await message.delete()
-            await data['info_message'].edit_text(
+            await bot.edit_message_text(
                 'Оцените ваш уровень физической подготовки',
+                chat_id=message.chat.id,
+                message_id=data['info_message'],
                 reply_markup=kb.gym_experience
             )
             await PersonChars.gym_experience.set()
@@ -678,16 +689,18 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
 async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         if callback.data == 'yes':
-            data['info_message'] = await callback.message.edit_text(
+            info_message = await callback.message.edit_text(
                 'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
             )
+            data['info_message'] = info_message.message_id
             await PersonChars.bench_results.set()
 
         if callback.data == 'no':
-            data['info_message'] = await callback.message.edit_text(
+            info_message = await callback.message.edit_text(
                 'Каких результатов вы ожидаете от тренировок?',
                 reply_markup=kb.expected_results
             )
+            data['info_message'] = info_message.message_id
             await PersonChars.goals.set()
 
 
@@ -695,17 +708,21 @@ async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
 async def add_bench_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+            info_message = await message.answer('Необходимо ввести численное значение')
+            data['info_message'] = info_message.message_id
         else:
             data['bench_results'] = int(message.text)
 
             await message.delete()
-            data['info_message'] = await data['info_message'].edit_text(
-                'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).'
+            info_message = await bot.edit_message_text(
+                'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
             )
+            data['info_message'] = info_message.message_id
             await PersonChars.deadlift_results.set()
 
 
@@ -713,17 +730,21 @@ async def add_bench_results(message: types.Message, state: FSMContext):
 async def add_deadlift_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+            info_message = await message.answer('Необходимо ввести численное значение')
+            data['info_message'] = info_message.message_id
         else:
             data['deadlift_results'] = int(message.text)
 
             await message.delete()
-            data['info_message'] = await data['info_message'].edit_text(
-                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).'
+            info_message = await bot.edit_message_text(
+                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
             )
+            data['info_message'] = info_message.message_id
             await PersonChars.squats_results.set()
 
 
@@ -731,16 +752,19 @@ async def add_deadlift_results(message: types.Message, state: FSMContext):
 async def add_squats_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            data['info_message'].delete()
+            await bot.delete_message(message.chat.id, data['info_message'])
             await message.delete()
 
-            data['info_message'] = await message.answer('Необходимо ввести численное значение')
+            info_message = await message.answer('Необходимо ввести численное значение')
+            data['info_message'] = info_message.message_id
         else:
             data['squats_results'] = int(message.text)
 
             await message.delete()
-            await data['info_message'].edit_text(
+            await bot.edit_message_text(
                 'Каких результатов вы ожидаете от тренировок?',
+                chat_id=message.chat.id,
+                message_id=data['info_message'],
                 reply_markup=kb.expected_results
             )
             await PersonChars.goals.set()
@@ -751,9 +775,10 @@ async def add_goal(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['goals'] = callback.data
 
-        data['info_message'] = await callback.message.edit_text(
+        info_message = await callback.message.edit_text(
             'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
         )
+        data['info_message'] = info_message.message_id
         await PersonChars.focus.set()
 
 
@@ -763,8 +788,10 @@ async def add_squats_results(message: types.Message, state: FSMContext):
         data['goals'] += '. Additionally, ' + message.text
 
         await message.delete()
-        await data['info_message'].edit_text(
+        await bot.edit_message_text(
             'Насколько интенсивно вы готовы заниматься? Укажите интенсивность тренировок.',
+            chat_id=message.chat.id,
+            message_id=data['info_message'],
             reply_markup=kb.intensity
         )
         await PersonChars.intensity.set()
@@ -775,11 +802,12 @@ async def add_intensity(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['intensity'] = callback.data
 
-        data['info_message'] = await callback.message.edit_text(
+        info_message = await callback.message.edit_text(
             'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
             '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
             'Напишите до 100 символов.'
         )
+        data['info_message'] = info_message.message_id
         await PersonChars.health_restrictions.set()
 
 
@@ -789,9 +817,11 @@ async def add_intensity(message: types.Message, state: FSMContext):
         data['health_restrictions'] = message.text
 
         await message.delete()
-        await data['info_message'].edit_text(
+        await bot.edit_message_text(
             'Укажите одним числом сколько раз в неделю вы готовы заниматься. '
             '(Рекомендованное количество: 3-4 дня в неделю, ввести возможно от 2 до 4 дней)',
+            chat_id=message.chat.id,
+            message_id=data['info_message'],
             reply_markup=kb.times_per_week
         )
 
