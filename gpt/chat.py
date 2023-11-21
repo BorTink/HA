@@ -1,5 +1,6 @@
 import re
 import os
+import pathlib
 
 import openai
 import tiktoken
@@ -9,7 +10,7 @@ from dotenv import load_dotenv
 import dal
 import schemas
 
-load_dotenv()
+load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
 openai.api_key = os.getenv('GPT_API_TOKEN')
 
 
