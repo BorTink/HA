@@ -15,7 +15,6 @@ openai.api_key = os.getenv('GPT_API_TOKEN')
 
 class ChatGPT:
     def __init__(self):
-        openai.api_key = "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"
         self.starting_message = {"role": "system", "content":
             """
             You are a fitness trainer capable of creating a workout program in gym.
