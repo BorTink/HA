@@ -1,13 +1,16 @@
 import re
+import os
 
 import openai
 import tiktoken
 from loguru import logger
+from dotenv import load_dotenv
 
 import dal
 import schemas
 
-openai.api_key = "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"
+load_dotenv()
+openai.api_key = os.getenv('GPT_API_TOKEN')
 
 
 class ChatGPT:
