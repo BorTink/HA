@@ -39,7 +39,8 @@ class User:
                     times_per_week INTEGER,
                     
                     rebuilt BOOLEAN DEFAULT 0 CHECK (rebuilt IN (0, 1)),
-                    subscribed BOOLEAN DEFAULT 0 CHECK (subscribed IN (0, 1))
+                    subscribed BOOLEAN DEFAULT 0 CHECK (subscribed IN (0, 1)),
+                    first_training BOOLEAN DEFAULT 1 CHECK (first_training IN (0, 1))
                     )
                     """)
 
@@ -155,14 +156,26 @@ class User:
         await db.commit()
 
     @classmethod
+    async def update_first_training_parameter(cls, user_id):
+        await cur.execute(f"""
+                        UPDATE users
+                        SET first_training = 0
+                        WHERE tg_id = {user_id}
+                    """)
+        logger.info(f'Параметр first_training у пользователя с id = {user_id} изменен на 0')
+
+        await db.commit()
+
+    @classmethod
     async def check_if_subscribed_by_user_id(cls, user_id):
         await cur.execute(f"""
                 SELECT subscribed
                 FROM users
-                WHERE user_id = {user_id}
+                WHERE tg_id = {user_id}
             """)
         subscribed = await cur.fetchone()
-        if subscribed:
+
+        if subscribed[0]:
             logger.debug(f'Пользователь {user_id} подписан')
             return True
         else:
@@ -174,12 +187,26 @@ class User:
         await cur.execute(f"""
                     SELECT rebuilt
                     FROM users
-                    WHERE user_id = {user_id}
+                    WHERE tg_id = {user_id}
                 """)
         subscribed = await cur.fetchone()
-        if subscribed:
+        if subscribed[0]:
             logger.warning(f'Пользователь {user_id} уже пересобирал тренировку')
             return True
         else:
             logger.debug(f'Пользователь {user_id} еще не пересобирал тренировку')
+            return False
+
+    @classmethod
+    async def check_if_first_training_by_user_id(cls, user_id):
+        await cur.execute(f"""
+            SELECT first_training
+            FROM users
+            WHERE tg_id = {user_id}
+            """)
+        first_training = await cur.fetchone()
+
+        if first_training[0]:
+            return True
+        else:
             return False

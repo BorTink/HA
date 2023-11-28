@@ -29,3 +29,5 @@ class BaseStates(StatesGroup):
     rebuild_workouts = State()
     start_workout = State()
     add_weight = State()
+    support = State()
+    add_review = State()

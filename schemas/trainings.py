@@ -9,3 +9,8 @@ class ReminderTraining(BaseModel):
     user_id: int
     created_date: datetime
     day: int
+
+
+class BaseExercise(BaseModel):
+    name: str
+    link: str

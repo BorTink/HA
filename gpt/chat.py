@@ -1,17 +1,21 @@
 import re
+import os
+import pathlib
 
 import openai
 import tiktoken
 from loguru import logger
+from dotenv import load_dotenv
 
+import dal
 import schemas
 
-openai.api_key = "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"
+load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
+openai.api_key = os.getenv('GPT_API_TOKEN')
 
 
 class ChatGPT:
     def __init__(self):
-        openai.api_key = "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"
         self.starting_message = {"role": "system", "content":
             """
             You are a fitness trainer capable of creating a workout program in gym.
@@ -24,7 +28,7 @@ class ChatGPT:
     async def chat(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,
             temperature=0.5
@@ -42,7 +46,7 @@ class ChatGPT:
                     f'- {prompt_num_tokens} токенов')
 
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,
             temperature=0.5
