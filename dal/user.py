@@ -145,13 +145,13 @@ class User:
         await db.commit()
 
     @classmethod
-    async def update_subscribed_parameter(cls, user_id):
+    async def update_subscribed_parameter(cls, user_id, value):
         await cur.execute(f"""
                     UPDATE users
-                    SET subscribed = 1
+                    SET subscribed = {value}
                     WHERE tg_id = {user_id}
                 """)
-        logger.info(f'Параметр subscribed у пользователя с id = {user_id} изменен на 1')
+        logger.info(f'Параметр subscribed у пользователя с id = {user_id} изменен на {value}')
 
         await db.commit()
 

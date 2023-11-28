@@ -167,12 +167,8 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 @dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
 async def successful_payment(message: types.Message):
     logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно')
-    payment_info = message.successful_payment.to_python()
-    for k, v in payment_info.items():
-        logger.info(f'{k} - {v}')
-
-    await message.answer(f'Платеж на сумму {message.successful_payment.total_amount // 100} '
-                         f'{message.successful_payment.currency} прошел успешно')
+    await dal.User.update_subscribed_parameter(message.from_user.id, 1)
+    await message.answer(f'Спасибо за покупку подписки! Ждем тебя на следующей тренировке!')
 
 
 @dp.message_handler(state='*', text='Вернуться в главное меню')
