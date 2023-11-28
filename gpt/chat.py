@@ -7,7 +7,6 @@ import tiktoken
 from loguru import logger
 from dotenv import load_dotenv
 
-import dal
 import schemas
 
 load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
