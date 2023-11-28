@@ -4,7 +4,6 @@ import openai
 import tiktoken
 from loguru import logger
 
-import dal
 import schemas
 
 openai.api_key = "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"
@@ -22,7 +21,7 @@ class ChatGPT:
             self.starting_message
         ]
 
-    def chat(self, message):
+    async def chat(self, message):
         self.messages.append({"role": "user", "content": message})
         response = openai.ChatCompletion.create(
             model="gpt-4",
@@ -32,7 +31,7 @@ class ChatGPT:
         )
         return response["choices"][0]["message"].content
 
-    def gpt_create_timetable(self, message):
+    async def gpt_create_timetable(self, message):
         self.messages = [
             self.starting_message,
             {"role": "user", "content": message}
@@ -115,8 +114,8 @@ END
     """
 
     chat = ChatGPT()
-
-    timetable_days = re.split(r'День \d+:|День \d+и', chat.gpt_create_timetable(prompt_text))
+    gpt_timetable = await chat.gpt_create_timetable(prompt_text)
+    timetable_days = re.split(r'День \d+:|День \d+и', gpt_timetable)
     training_days = []
     for i in range(len(timetable_days)):
         logger.info(f'День {i+1} - {timetable_days[i]}')
