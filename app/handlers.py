@@ -870,7 +870,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         training,
         reply_markup=kb.trainings_tab,
-        parse_mode='Markdown'
+        parse_mode='HTML'
     )
 
 
