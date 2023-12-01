@@ -34,6 +34,8 @@ PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=39
 async def start(message: types.Message, state: FSMContext):
     if state:
         await state.finish()
+
+    await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
     logger.info(f'user - {user}')
