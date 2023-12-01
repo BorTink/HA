@@ -902,7 +902,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
 #         await message.reply(f'Длина промпта для расписания '
 #                     f'- {prompt_num_tokens} токенов')
 #
-#         reply = ChatGPT().chat(message.text)
+#         reply = await ChatGPT().chat(message.text)
 #         reply_num_tokens = len(encoding.encode(reply))
 #         await message.answer(f'Длина ответа '
 #                     f'- {reply_num_tokens} токенов. '
