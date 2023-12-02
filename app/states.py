@@ -31,3 +31,7 @@ class BaseStates(StatesGroup):
     add_weight = State()
     support = State()
     add_review = State()
+
+
+class Admin(StatesGroup):
+    assistant_training = State()

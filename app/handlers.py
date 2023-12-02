@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from loguru import logger
 
 from utils import process_prompt, split_workout, process_workout, get_training_markup
-from .states import PersonChars, BaseStates
+from .states import PersonChars, BaseStates, Admin
 from app import keyboards as kb
 import dal
 from gpt.chat import ChatGPT
@@ -41,9 +41,14 @@ async def start(message: types.Message, state: FSMContext):
     logger.info(f'user - {user}')
     async with state.proxy() as data:
         if user:
-            await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
-            await message.answer('Выберите действие',
-                                 reply_markup=kb.main)
+            if message.from_user.id in [635237071, 284863184]:
+                await message.answer('ЭТО АДМИН ПАНЕЛЬ', reply_markup=kb.always_markup)
+                await message.answer('Выберите действие',
+                                     reply_markup=kb.main_admin)
+            else:
+                await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
+                await message.answer('Выберите действие',
+                                     reply_markup=kb.main)
         else:
             await message.answer(
                 '👋 Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
@@ -67,6 +72,27 @@ async def start(message: types.Message, state: FSMContext):
                 reply_markup=kb.main_new,
                 parse_mode='Markdown'
             )
+
+
+@dp.callback_query_handler(state='*', text='ADMIN_go_to_assistant_testing')
+async def go_to_assistant_training(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(Admin.assistant_training)
+    global this_gpt
+    this_gpt = ChatGPT()
+    await this_gpt.create_assistant()
+    await this_gpt.create_thread()
+    await callback.message.edit_text('Вы перешли в раздел тестирования ассистента.')
+    await asyncio.sleep(0.5)
+    await callback.message.answer('Для перезагрузки ассистента напишите */start* и зайдите сюда заново',
+                                  parse_mode='Markdown')
+    await asyncio.sleep(0.5)
+    await callback.message.answer('Можете писать сообщения')
+
+
+@dp.message_handler(state=Admin.assistant_training)
+async def assistant_message(message: types.Message, state: FSMContext):
+    response = await this_gpt.add_message(message.text)
+    await message.answer(response)
 
 
 # @dp.callback_query_handler(state='*', text='generate_trainings')
