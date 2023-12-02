@@ -24,13 +24,10 @@ class ChatGPT:
         self.messages = [
             self.starting_message
         ]
-        self.client = None
+        self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
         self.assistant_id = 'asst_zrLHVX2RY9AjFjKy3f4pbYh6'
         self.thread = None
         self.run = None
-
-    async def create_client(self):
-        self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
 
     async def create_thread(self):
         self.thread = self.client.beta.threads.create()
@@ -65,7 +62,7 @@ class ChatGPT:
 
     async def chat(self, message):
         self.messages.append({"role": "user", "content": message})
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,
@@ -83,7 +80,7 @@ class ChatGPT:
         logger.info(f'Длина промпта для расписания '
                     f'- {prompt_num_tokens} токенов')
 
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model="gpt-4-1106-preview",
             messages=self.messages,
             max_tokens=3000,

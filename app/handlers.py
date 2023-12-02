@@ -79,7 +79,6 @@ async def go_to_assistant_training(callback: types.CallbackQuery, state: FSMCont
     await state.set_state(Admin.assistant_training)
     global this_gpt
     this_gpt = ChatGPT()
-    await this_gpt.create_client()
     await this_gpt.create_thread()
     await callback.message.edit_text('Вы перешли в раздел тестирования ассистента.')
     await asyncio.sleep(0.5)
