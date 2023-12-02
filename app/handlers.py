@@ -379,7 +379,8 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
     await message.answer(
         training,
-        reply_markup=kb.trainings_tab
+        reply_markup=kb.trainings_tab,
+        parse_mode='HTML'
     )
 
 
@@ -426,7 +427,8 @@ async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext)
 
     await callback.message.answer(
         training,
-        reply_markup=kb.trainings_tab
+        reply_markup=kb.trainings_tab,
+        parse_mode='HTML'
     )
 
 
@@ -528,7 +530,8 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
         training,
-        reply_markup=kb.trainings_tab
+        reply_markup=kb.trainings_tab,
+        parse_mode='HTML'
     )
 
 
