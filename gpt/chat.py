@@ -53,6 +53,7 @@ class ChatGPT:
             thread_id=self.thread.id,
             assistant_id=self.assistant.id
         )
+        return self.run
 
     async def get_run_status(self):
         status = self.client.beta.threads.runs.retrieve(
