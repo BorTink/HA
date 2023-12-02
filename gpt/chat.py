@@ -27,6 +27,7 @@ class ChatGPT:
         self.client = None
         self.assistant = None
         self.thread = None
+        self.run = None
 
     async def create_assistant(self):
         self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
@@ -46,6 +47,25 @@ class ChatGPT:
             content=message
         )
         return message
+
+    async def create_run(self):
+        self.run = self.client.beta.threads.runs.create(
+            thread_id=self.thread.id,
+            assistant_id=self.assistant.id
+        )
+
+    async def get_run_status(self):
+        status = self.client.beta.threads.runs.retrieve(
+            thread_id=self.thread.id,
+            run_id=self.run.id
+        )
+        return status
+
+    async def get_all_messages(self):
+        messages = self.client.beta.threads.messages.list(
+            thread_id=self.thread.id
+        )
+        return messages
 
     async def chat(self, message):
         self.messages.append({"role": "user", "content": message})

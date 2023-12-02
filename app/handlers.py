@@ -91,8 +91,21 @@ async def go_to_assistant_training(callback: types.CallbackQuery, state: FSMCont
 
 @dp.message_handler(state=Admin.assistant_training)
 async def assistant_message(message: types.Message, state: FSMContext):
-    response = await this_gpt.add_message(message.text)
-    await message.answer(response)
+    await this_gpt.add_message(message.text)
+    await this_gpt.create_run()
+
+    status = await this_gpt.get_run_status()
+    await message.answer(status)
+
+    await asyncio.sleep(20)
+
+    status = await this_gpt.get_run_status()
+    await message.answer(status)
+
+    await asyncio.sleep(5)
+
+    messages = await this_gpt.get_all_messages()
+    await message.answer(messages)
 
 
 # @dp.callback_query_handler(state='*', text='generate_trainings')
