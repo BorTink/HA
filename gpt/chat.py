@@ -25,17 +25,12 @@ class ChatGPT:
             self.starting_message
         ]
         self.client = None
-        self.assistant = None
+        self.assistant_id = 'asst_zrLHVX2RY9AjFjKy3f4pbYh6'
         self.thread = None
         self.run = None
 
-    async def create_assistant(self):
+    async def create_client(self):
         self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
-        self.assistant = self.client.beta.assistants.create(
-            name='HealthAI_assistant',
-            instructions="You are a fitness trainer capable of creating a workout program in gym.",
-            model="gpt-4-1106-preview"
-        )
 
     async def create_thread(self):
         self.thread = self.client.beta.threads.create()
@@ -51,7 +46,7 @@ class ChatGPT:
     async def create_run(self):
         self.run = self.client.beta.threads.runs.create(
             thread_id=self.thread.id,
-            assistant_id=self.assistant.id
+            assistant_id=self.assistant_id
         )
         return self.run
 
