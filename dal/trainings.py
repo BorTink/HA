@@ -182,6 +182,9 @@ class Trainings:
             AND user_id = {user_id}
             """)
         active_training = await cur.fetchone()
-        logger.info(f'Активная тренировка пользователя {user_id} была получена')
+        if active_training:
+            logger.info(f'Активная тренировка пользователя {user_id} была получена')
+        else:
+            logger.warning(f'Активная тренировка пользователя {user_id} не была получена')
 
         return active_training if active_training else (None, None)

@@ -464,7 +464,10 @@ async def add_weight(callback: types.CallbackQuery, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['temp_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['temp_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             temp_message = await message.answer(
@@ -473,7 +476,10 @@ async def add_weight(message: types.Message, state: FSMContext):
             data['temp_message'] = temp_message.message_id
 
         elif int(message.text) > 300:
-            await bot.delete_message(message.chat.id, data['temp_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['temp_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             temp_message = await message.answer(
@@ -483,7 +489,10 @@ async def add_weight(message: types.Message, state: FSMContext):
 
         else:
             await message.delete()
-            await bot.delete_message(message.chat.id, data['temp_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['temp_message'])
+            except Exception as exc:
+                pass
 
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
             await process_workout(workout_in_process, data, state, message, kb)
@@ -520,7 +529,10 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
         data['day'] = 1
         data['workout'] = training
 
-        await bot.delete_message(callback.message.chat.id, data['message'])
+        try:
+            await bot.delete_message(callback.message.chat.id, data['message'])
+        except Exception as exc:
+            pass
         await callback.message.delete()
 
     await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
@@ -638,7 +650,10 @@ async def add_sex(callback: types.CallbackQuery, state: FSMContext):
 async def add_age(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение. '
@@ -661,7 +676,10 @@ async def add_age(message: types.Message, state: FSMContext):
 async def add_height(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение')
@@ -682,7 +700,10 @@ async def add_height(message: types.Message, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение')
@@ -741,7 +762,10 @@ async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
 async def add_bench_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение')
@@ -763,7 +787,10 @@ async def add_bench_results(message: types.Message, state: FSMContext):
 async def add_deadlift_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение')
@@ -785,7 +812,10 @@ async def add_deadlift_results(message: types.Message, state: FSMContext):
 async def add_squats_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            await bot.delete_message(message.chat.id, data['info_message'])
+            try:
+                await bot.delete_message(message.chat.id, data['info_message'])
+            except Exception as exc:
+                pass
             await message.delete()
 
             info_message = await message.answer('Необходимо ввести численное значение')
