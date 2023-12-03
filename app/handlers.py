@@ -339,6 +339,12 @@ async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContex
             await callback.answer(
                 'Вы уже 30 раз пересобрали тренировку на неделю'
             )
+        else:
+            await callback.message.answer(
+                'Введите что вы хотите изменить до 100 символов. '
+                '(Тренировку можно пересобрать 1 раз в пробной версии, может добавить нужные упражнения или что-то убрать)'
+            )
+            await state.set_state(BaseStates.rebuild_workouts)
     elif user.rebuilt == 1:
         await callback.answer(
             'Вы уже пересобирали тренировку на неделю'
