@@ -25,7 +25,7 @@ class ChatGPT:
             self.starting_message
         ]
         self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
-        self.assistant_id = 'asst_zrLHVX2RY9AjFjKy3f4pbYh6'
+        self.assistant_id = os.getenv('ASSISTANT_ID')
         self.thread = None
         self.run = None
 
