@@ -334,7 +334,12 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.show_trainings, text='rebuild_workouts')
 async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContext):
     user = await dal.User.select_attributes(callback.from_user.id)
-    if user.rebuilt == 1:
+    if callback.from_user.id == 913925619:
+        if user.rebuilt > 31:
+            await callback.answer(
+                'Вы уже 30 раз пересобрали тренировку на неделю'
+            )
+    elif user.rebuilt == 1:
         await callback.answer(
             'Вы уже пересобирали тренировку на неделю'
         )
