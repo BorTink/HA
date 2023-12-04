@@ -79,8 +79,6 @@ class Reminder:
                 "chat_id": training.chat_id if training.chat_id else training.user_id})
             logger.info(f'Было отправлено напоминание пользователю {training.user_id} - {resp.json()}')
 
-        logger.info('Отправка напоминаний окончена')
-
     async def execute(self):
         self.reminder_trainings = await dal.Trainings.get_all_active_trainings_with_dates()
         if self.reminder_trainings:
