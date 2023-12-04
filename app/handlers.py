@@ -5,7 +5,6 @@ import pathlib
 import tiktoken
 from aiogram import Dispatcher, types, Bot
 from aiogram.dispatcher import FSMContext
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from aiogram.types.message import ContentType
@@ -38,9 +37,10 @@ async def start(message: types.Message, state: FSMContext):
     await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
+    trainings, day = await dal.Trainings.get_trainings_by_day(message.from_user.id, 1)
     logger.info(f'user - {user}')
     async with state.proxy() as data:
-        if user:
+        if user and trainings:
             if message.from_user.id in [635237071, 284863184]:
                 await message.answer('ЭТО АДМИН ПАНЕЛЬ', reply_markup=kb.always_markup)
                 await message.answer('Выберите действие',
