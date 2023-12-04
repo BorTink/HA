@@ -169,9 +169,22 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         await bot.send_invoice(message.chat.id,
-                               title='Подписка на бота',
-                               description='Подписка на бота на 1 месяц',
+                               title='Месячная подписка на сервис HealthAI',
+                               description='Месячная подписка на сервис HealthAI',
                                provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               provider_data={
+                                   "receipt": {
+                                       "items": [
+                                           {
+                                               "description": "Месячная подписка на сервис HealthAI",
+                                               "quantity": "1",
+                                               "amount": {"value": "399.00", "currency": "RUB"},
+                                               "vat_code": 1
+                                           }
+                                       ],
+                                       "customer": {"email": "borisus.amusov@mail.ru"}
+                                   }
+                               },
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
@@ -195,7 +208,7 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 
 @dp.pre_checkout_query_handler(lambda query: True)
 async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
-    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True, error_message='FUCK')
+    await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True, error_message='Произошла ошибка')
 
 
 @dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
