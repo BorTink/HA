@@ -197,6 +197,19 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                title='Подписка на бота',
                                description='Подписка на бота на 1 месяц',
                                provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               provider_data={
+                                   "receipt": {
+                                       "items": [
+                                           {
+                                               "description": "Месячная подписка на сервис HealthAI",
+                                               "quantity": "1",
+                                               "amount": {"value": "399.00", "currency": "RUB"},
+                                               "vat_code": 1
+                                           }
+                                       ],
+                                       "customer": {"email": "borisus.amusov@mail.ru"}
+                                   }
+                               },
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
