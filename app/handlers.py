@@ -593,25 +593,51 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
 async def get_subscription(callback: types.CallbackQuery, state: FSMContext):
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         await bot.send_invoice(callback.message.chat.id,
-                               title='Подписка на бота',
-                               description='Подписка на бота на 1 месяц',
+                               title='Месячная подписка на сервис HealthAI',
+                               description='Месячная подписка на сервис HealthAI',
                                provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               provider_data={
+                                   "receipt": {
+                                       "items": [
+                                           {
+                                               "description": "Месячная подписка на сервис HealthAI",
+                                               "quantity": "1",
+                                               "amount": {"value": "399.00", "currency": "RUB"},
+                                               "vat_code": 1
+                                           }
+                                       ],
+                                       "customer": {"email": "borisus.amusov@mail.ru"}
+                                   }
+                               },
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
-                               is_flexible=True,
+                               is_flexible=False,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
                                payload='test-invoice-payload')
     else:
         await bot.send_invoice(callback.message.chat.id,
-                               title='Подписка на бота',
-                               description='Подписка на бота на 1 месяц',
+                               title='Месячная подписка на сервис HealthAI',
+                               description='Месячная подписка на сервис HealthAI',
                                provider_token=os.getenv('PAYMENTS_TOKEN'),
+                               provider_data={
+                                   "receipt": {
+                                       "items": [
+                                           {
+                                               "description": "Месячная подписка на сервис HealthAI",
+                                               "quantity": "1",
+                                               "amount": {"value": "399.00", "currency": "RUB"},
+                                               "vat_code": 1
+                                           }
+                                       ],
+                                       "customer": {"email": "borisus.amusov@mail.ru"}
+                                   }
+                               },
                                currency='rub',
                                photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
                                photo_width=1270,
-                               is_flexible=True,
+                               is_flexible=False,
                                prices=[PRICE],
                                start_parameter='one-month-subscription',
                                payload='subscription-payload')
