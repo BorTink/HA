@@ -137,6 +137,8 @@ async def process_workout(
                              'без которой вы не сможете добиться желаемого результата!')
         await asyncio.sleep(1)
 
+        subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
+
         await dal.Trainings.update_trainings(
             user_id=user_id,
             day=data['day'],
@@ -155,14 +157,23 @@ async def process_workout(
             )
 
         else:
-            await message.answer('Вы закончили все тренировки на этой неделе')
+            await message.answer('🏆 Поздравляем с успешным завершением первой недели наших занятий!')
             await asyncio.sleep(2)
-            training, new_day = await dal.Trainings.get_trainings_by_day(
-                user_id=user_id,
-                day=1
-            )
+            if not subscribed:
+                await message.answer('Пробный период подошёл к концу. '
+                                     'Если вы хотите продолжить заниматься по персональной адаптивной программе, '
+                                     'оформите ежемесячную подписку. С ней у вас будет доступ к новым тренировкам, '
+                                     'возможность и дальше отслеживать свой прогресс и многое другое.')
+                await asyncio.sleep(1)
+                await message.answer('Стоимость подписки 399 руб/мес.')
+                await asyncio.sleep(1)
+                await message.answer(
+                    'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
+                    reply_markup=kb.subscribe_proposition
+                )
+            else:
+                await message.answer('Перед составлением тренировок на следующую неделю, напишите пожалуйста желаемые изменения ')
 
-        subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
         if not subscribed and first_training:
             await dal.User.update_first_training_parameter(user_id)
 
@@ -192,6 +203,7 @@ async def process_workout(
             )
 
         else:
+            await dal.User.update_first_training_parameter(user_id)
             await message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
             await asyncio.sleep(1.5)
 
