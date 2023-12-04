@@ -9,6 +9,7 @@ class ReminderTraining(BaseModel):
     user_id: int
     created_date: datetime
     day: int
+    chat_id: int
 
 
 class BaseExercise(BaseModel):

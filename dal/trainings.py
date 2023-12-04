@@ -163,10 +163,11 @@ class Trainings:
     @classmethod
     async def get_all_active_trainings_with_dates(cls):
         await cur.execute(f"""
-                SELECT user_id, created_date, day
-                FROM trainings
-                WHERE active = 1
-                AND in_progress = 0
+                SELECT t.user_id, t.created_date, t.day, u.chat_id
+                FROM trainings t
+                JOIN users u ON t.user_id = u.tg_id
+                WHERE t.active = 1
+                AND t.in_progress = 0
                 """)
         active_trainigs_with_dates = await cur.fetchall()
         logger.info(f'Получено {len(active_trainigs_with_dates)} активных тренировок для напоминания')
