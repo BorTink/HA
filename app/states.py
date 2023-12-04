@@ -31,6 +31,8 @@ class BaseStates(StatesGroup):
     add_weight = State()
     support = State()
     add_review = State()
+    end_of_week_changes = State()
+    end_of_trial = State()
 
 
 class Admin(StatesGroup):

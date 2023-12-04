@@ -150,3 +150,63 @@ EXAMPLE:
 (Название упражнения) - ... кг,.. подходов , ..  повторений, отдых .. минуты
     """
     return prompt_text
+
+
+async def fill_man_increase_weight_prompt_next_week(
+        prompt_data: schemas.PromptData, workout_plan, client_edits_next_week=None
+):
+    prompt_text = f"""
+You are a fitness trainer capable of creating a workout program in gym.
+You will be provided with the workout plan for the previous week. 
+Create workout plan for the following week, given that the person is a man and he wants to improve his muscle strength. 
+You can slightly change some exercises but don't increase the weights of the current exercises. 
+Also keep in mind the following remarks: {client_edits_next_week}. 
+And my health restrictions are: {prompt_data.health_restrictions}
+Keep the same formatting and translate it to Russian. Your output should only consist of the workout plan for the week.
+
+THE WORKOUT PLAN FOR THE PREVIOUS WEEK:
+{{
+{workout_plan}
+}}
+"""
+    return prompt_text
+
+
+async def fill_man_lose_weight_prompt_next_week(
+        prompt_data: schemas.PromptData, workout_plan, client_edits_next_week=None
+):
+    prompt_text = f"""
+You are a fitness trainer capable of creating a workout program in gym.
+You will be provided with the workout plan for the previous week. 
+Create workout plan for the following week, given that the person is a man and he wants to lose his weight. 
+You can slightly change some exercises but don't increase the weights of the current exercises. 
+Also keep in mind the following remarks: {client_edits_next_week}. 
+And my health restrictions are: {prompt_data.health_restrictions}
+Keep the same formatting and translate it to Russian. Your output should only consist of the workout plan for the week.
+
+THE WORKOUT PLAN FOR THE PREVIOUS WEEK:
+{{
+{workout_plan}
+}}
+"""
+    return prompt_text
+
+
+async def fill_woman_lose_weight_prompt_next_week(
+        prompt_data: schemas.PromptData, workout_plan, client_edits_next_week=None
+):
+    prompt_text = f"""
+You are a fitness trainer capable of creating a workout program in gym.
+You will be provided with the workout plan for the previous week. 
+Create workout plan for the following week, given that the person is a woman and wants to lose her weight. 
+You can slightly change some exercises but don't increase the weights of the current exercises. 
+Also keep in mind the following remarks: {client_edits_next_week}. 
+And my health restrictions are: {prompt_data.health_restrictions}
+Keep the same formatting and translate it to Russian. Your output should only consist of the workout plan for the week.
+
+THE WORKOUT PLAN FOR THE PREVIOUS WEEK:
+{{
+{workout_plan}
+}}
+"""
+    return prompt_text

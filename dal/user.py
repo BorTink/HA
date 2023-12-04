@@ -170,6 +170,17 @@ class User:
         await db.commit()
 
     @classmethod
+    async def increase_week_parameter(cls, user_id):
+        await cur.execute(f"""
+                            UPDATE users
+                            SET week = week + 1
+                            WHERE tg_id = {user_id}
+                        """)
+        logger.info(f'Параметр week у пользователя с id = {user_id} увеличен на 1')
+
+        await db.commit()
+
+    @classmethod
     async def update_chat_id_parameter(cls, user_id, chat_id):
         await cur.execute(f"""
             UPDATE users

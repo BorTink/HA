@@ -186,6 +186,6 @@ class Trainings:
         if active_training:
             logger.info(f'Активная тренировка пользователя {user_id} была получена')
         else:
-            logger.warning(f'Активная тренировка пользователя {user_id} не была получена')
+            logger.warning(f'У пользователя {user_id} нет активных тренировок')
 
         return active_training if active_training else (None, None)

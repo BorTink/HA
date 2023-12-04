@@ -8,7 +8,9 @@ from loguru import logger
 from dotenv import load_dotenv
 
 import schemas
-from gpt.prompts import fill_man_lose_weight_prompt, fill_man_increase_weight_prompt, fill_woman_lose_weight_prompt
+from gpt.prompts import fill_man_lose_weight_prompt, fill_man_increase_weight_prompt, fill_woman_lose_weight_prompt, \
+    fill_woman_lose_weight_prompt_next_week, fill_man_lose_weight_prompt_next_week, \
+    fill_man_increase_weight_prompt_next_week
 
 load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
 openai.api_key = os.getenv('GPT_API_TOKEN')
@@ -111,6 +113,40 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
             prompt_text = await fill_man_increase_weight_prompt(prompt_data, client_changes)
         else:
             prompt_text = await fill_man_lose_weight_prompt(prompt_data, client_changes)
+
+    chat = ChatGPT()
+    gpt_timetable = await chat.gpt_create_timetable(prompt_text)
+    timetable_days = re.split(r'День \d+:|День \d+и', gpt_timetable)
+    training_days = []
+    for i in range(len(timetable_days)):
+        logger.info(f'День {i+1} - {timetable_days[i]}')
+        if len(timetable_days[i].split()) < 12:
+            if i == 0:
+                continue
+            training_days.append('Отдых\n\n')
+        else:
+            if i == len(timetable_days)-1:
+                training_days.append('\n\n'.join(timetable_days[i].split('\n\n')[:-1]))
+            else:
+                training_days.append('\n\n'.join(timetable_days[i].split('\n\n')))
+
+    return training_days
+
+
+async def fill_prompt_next_week(prompt_data: schemas.PromptData, trainings_prev_week, client_edits_next_week=None):
+    if prompt_data.gender == 'Женский':
+        prompt_text = await fill_woman_lose_weight_prompt_next_week(
+            prompt_data, trainings_prev_week, client_edits_next_week
+        )
+    else:
+        if ' '.join(prompt_data.goals.split()[:2]) == "muscle gain.":
+            prompt_text = await fill_man_increase_weight_prompt_next_week(
+                prompt_data, trainings_prev_week, client_edits_next_week
+            )
+        else:
+            prompt_text = await fill_man_lose_weight_prompt_next_week(
+                prompt_data, trainings_prev_week, client_edits_next_week
+            )
 
     chat = ChatGPT()
     gpt_timetable = await chat.gpt_create_timetable(prompt_text)

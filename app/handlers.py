@@ -12,7 +12,7 @@ from aiogram.types.message import ContentType
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils import process_prompt, split_workout, process_workout, get_training_markup
+from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup
 from .states import PersonChars, BaseStates, Admin
 from app import keyboards as kb
 import dal
@@ -289,15 +289,11 @@ async def write_review(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state='*', text=['SHOW_TIMETABLE', 'back_to_timetable'])
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.show_trainings)
-
-    training, day = await dal.Trainings.get_trainings_by_day(
-        user_id=callback.from_user.id,
-        day=1
-    )
-
+    training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+    subscribed = await dal.User.check_if_subscribed_by_user_id(callback.from_user.id)
     if training:
         async with state.proxy() as data:
-            data['day'] = 1
+            data['day'] = day
             data['workout'] = training
 
         await callback.message.edit_text(
@@ -306,12 +302,42 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
             parse_mode='HTML'
         )
 
+    elif not subscribed:
+        await state.set_state(BaseStates.end_of_trial)
+        await callback.message.edit_text('Пробный период подошёл к концу.')
+        await asyncio.sleep(1)
+        await callback.message.answer(
+            'Если вы хотите продолжить заниматься по персональной адаптивной программе, '
+            'оформите ежемесячную подписку. С ней у вас будет доступ к новым тренировкам, '
+            'возможность и дальше отслеживать свой прогресс и многое другое.'
+        )
+        await asyncio.sleep(1)
+        await callback.message.answer('Стоимость подписки 399 руб/мес.')
+        await asyncio.sleep(1)
+        await callback.message.answer(
+            'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
+            reply_markup=kb.subscribe_proposition
+        )
     else:
+        await state.set_state(BaseStates.end_of_week_changes)
         await callback.message.edit_text(
-            f"У вас нет доступных тренировок",
-            reply_markup=kb.main
+            'Вы закончили эту неделю тренировкок! '
+            'Перед составлением тренировок на следующую неделю, '
+            'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
+            '(до 100 символов)',
         )
 
+
+@dp.callback_query_handler(state=BaseStates.end_of_trial, text='subscribe_later')
+async def back_to_menu(message: types.Message, state: FSMContext):
+    await dal.User.update_chat_id_parameter(message.from_user.id, message.chat.id)
+    if state:
+        await state.finish()
+
+    await message.answer(
+        'Выберите действие',
+        reply_markup=kb.main
+    )
 
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
 async def switch_days(callback: types.CallbackQuery, state: FSMContext):
@@ -592,7 +618,55 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
     )
 
 
-@dp.callback_query_handler(state=BaseStates.show_trainings, text='get_subscription')
+@dp.message_handler(state=BaseStates.end_of_week_changes)
+async def get_end_of_week_changes_from_user(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        if len(message.text) > 100:
+            await bot.delete_message(message.chat.id, message.message_id)
+            temp_message = await bot.edit_message_text('Ваши коррективы на тренировки должны быть меньше 100 символов',
+                                                       message.chat.id, data['temp_message'])
+            data['temp_message'] = temp_message.message_id
+        else:
+            await message.answer('⏳Ваши правки будут учтены, создаются тренировки на следующую неделю')
+            attempts = 0
+            while attempts < 3:
+                try:
+                    await process_prompt_next_week(
+                        user_id=message.from_user.id
+                    )
+                    break
+                except Exception as exc:
+                    logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+                    attempts += 1
+
+            await dal.User.increase_week_parameter(message.from_user.id)
+
+            await dal.Trainings.update_active_training_by_day(
+                user_id=message.from_user.id,
+                day=1,
+                active=True
+            )
+            training, new_day = await dal.Trainings.get_trainings_by_day(
+                user_id=message.from_user.id,
+                day=1
+            )
+            async with state.proxy() as data:
+                data['day'] = 1
+                data['workout'] = training
+
+            await message.answer(
+                '✅ План ваших тренировок готов! Попробуйте их выполнить и возвращайтесь с обратной связью!',
+                reply_markup=kb.always_markup
+            )
+            await asyncio.sleep(2)
+            await message.answer(
+                training,
+                reply_markup=kb.trainings_tab,
+                parse_mode='HTML'
+            )
+
+
+@dp.callback_query_handler(state=[BaseStates.show_trainings, BaseStates.end_of_trial], text='get_subscription')
 async def get_subscription(callback: types.CallbackQuery, state: FSMContext):
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         await bot.send_invoice(callback.message.chat.id,

@@ -1,7 +1,7 @@
 from loguru import logger
 import asyncio
 
-from gpt.chat import fill_prompt
+from gpt.chat import fill_prompt, fill_prompt_next_week
 from app.states import BaseStates
 import app.keyboards as kb
 import dal
@@ -12,6 +12,78 @@ async def process_prompt(user_id, client_changes=None):
     data = await dal.User.select_attributes(user_id)
 
     trainings = await fill_prompt(data, client_changes)
+    await dal.Trainings.remove_prev_trainings(
+        user_id=int(user_id)
+    )
+    day_number = 1
+    for training in trainings:
+        if 'Отдых' in training:
+            day_number += 1
+        else:
+            cur_training = training.replace('"', '').replace("""'""", '')
+            cur_training = cur_training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение').split('\n')[1:]
+
+            final_training = []
+            for line in cur_training:
+                if len(line) < 5 or 'Разминка' in line:
+                    final_training.append(line)
+                    continue
+
+                exercise_name = line.split(' -')[0]
+                exercise_name_words = exercise_name.split()
+                similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
+
+                if similar_exercises:
+                    temp_exercises = []
+
+                    for word in exercise_name_words:
+                        for exercise in similar_exercises:
+                            if word in exercise.name:
+                                temp_exercises.append(exercise)
+
+                        if not temp_exercises:
+                            break
+
+                        similar_exercises = temp_exercises
+                        temp_exercises = []
+
+                    min_len_word = 100000
+                    final_exercise = None
+                    for exercise in similar_exercises:
+                        if len(exercise.name) < min_len_word:
+                            min_len_word = len(exercise.name)
+                            final_exercise = exercise
+
+                    exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
+
+                final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
+
+            final_training = '\n'.join(final_training)
+
+            await dal.Trainings.update_trainings(
+                user_id=int(user_id),
+                day=day_number,
+                data=final_training
+            )
+            day_number += 1
+
+    return trainings
+
+
+async def process_prompt_next_week(user_id, client_edits_next_week=None):
+    logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
+    data = await dal.User.select_attributes(user_id)
+    trainings_prev_week = ''
+    for i in range(1, 8):
+        if trainings_prev_week != '':
+            trainings_prev_week += '\n\n'
+        workout, _ = await dal.Trainings.get_trainings_by_day(user_id, i)
+        if workout is None:
+            trainings_prev_week += f'День {i} - Отдых'
+        else:
+            trainings_prev_week += f'День {i} - {workout}'
+
+    trainings = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
@@ -172,7 +244,11 @@ async def process_workout(
                     reply_markup=kb.subscribe_proposition
                 )
             else:
-                await message.answer('Перед составлением тренировок на следующую неделю, напишите пожалуйста желаемые изменения ')
+                await state.set_state(BaseStates.end_of_week_changes)
+                temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
+                                     'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
+                                     '(до 100 символов)')
+                data['temp_message'] = temp_message.message_id
 
         if not subscribed and first_training:
             await dal.User.update_first_training_parameter(user_id)
