@@ -194,8 +194,8 @@ async def buy_subscription(message: types.Message, state: FSMContext):
                                payload='test-invoice-payload')
     else:
         await bot.send_invoice(message.chat.id,
-                               title='Подписка на бота',
-                               description='Подписка на бота на 1 месяц',
+                               title='Месячная подписка на сервис HealthAI',
+                               description='Месячная подписка на сервис HealthAI',
                                provider_token=os.getenv('PAYMENTS_TOKEN'),
                                provider_data={
                                    "receipt": {
