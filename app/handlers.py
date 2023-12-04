@@ -368,10 +368,16 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
     await dal.User.update_rebuilt_parameter(message.from_user.id)
 
-    await process_prompt(
-        user_id=message.from_user.id,
-        client_changes=message.text
-    )
+    attempts = 0
+    while attempts < 3:
+        try:
+            await process_prompt(
+                user_id=message.from_user.id
+            )
+            break
+        except Exception as exc:
+            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+            attempts += 1
 
     await dal.Trainings.update_active_training_by_day(
         user_id=message.from_user.id,
@@ -920,9 +926,17 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         '⏳Подождите, составляем персональную тренировку'
     )
 
-    await process_prompt(
-        user_id=callback.from_user.id
-    )
+    attempts = 0
+    while attempts < 3:
+        try:
+            await process_prompt(
+                user_id=callback.from_user.id
+            )
+            break
+        except Exception as exc:
+            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+            attempts += 1
+
     await dal.Trainings.update_active_training_by_day(
         user_id=callback.from_user.id,
         day=1,
