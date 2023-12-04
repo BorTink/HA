@@ -31,7 +31,7 @@ class Reminder:
             resp = requests.post(self.url, params={
                 "text": "🌆Добрый вечер! Напоминаем, что завтра у вас запланирована тренировка. "
                         "Не забудьте отдохнуть и как следует выспаться перед занятием.",
-                "chat_id": training.chat_id})
+                "chat_id": training.chat_id if training.chat_id else training.user_id})
             logger.info(f'Было отправлено напоминание пользователю {training.user_id} - {resp.json()}')
 
         elif current_date == training_date and any([
@@ -43,7 +43,7 @@ class Reminder:
             resp = requests.post(self.url, params={
                 "text": "🏙Добрый день! Напоминаем, что сегодня у вас состоится тренировка. "
                         "Желаем продуктивного занятия!",
-                "chat_id": training.chat_id})
+                "chat_id": training.chat_id if training.chat_id else training.user_id})
             logger.info(f'Было отправлено напоминание пользователю {training.user_id} - {resp.json()}')
 
         elif current_date == training_date + timedelta(days=1) and any([
@@ -56,7 +56,7 @@ class Reminder:
                 "text": "‼️Добрый день! Похоже, вы пропустили свою прошлую тренировку(\n"
                         "Помните, что без регулярности и последовательности занятия не дадут нужных результатов. "
                         "Выполните пропущенную тренировку и возвращайтесь в привычный ритм!",
-                "chat_id": training.chat_id})
+                "chat_id": training.chat_id if training.chat_id else training.user_id})
             logger.info(f'Было отправлено напоминание пользователю {training.user_id} - {resp.json()}')
 
         elif current_date == training_date + timedelta(days=2) and any([
@@ -76,7 +76,7 @@ class Reminder:
 
             resp = requests.post(self.url, params={
                 "text": notification_text,
-                "chat_id": training.chat_id})
+                "chat_id": training.chat_id if training.chat_id else training.user_id})
             logger.info(f'Было отправлено напоминание пользователю {training.user_id} - {resp.json()}')
 
         logger.info('Отправка напоминаний окончена')

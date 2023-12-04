@@ -233,6 +233,7 @@ async def successful_payment(message: types.Message):
 
 @dp.message_handler(state='*', text='Вернуться в главное меню')
 async def back_to_menu(message: types.Message, state: FSMContext):
+    await dal.User.update_chat_id_parameter(message.from_user.id, message.chat.id)
     if state:
         await state.finish()
 
@@ -315,6 +316,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
 async def switch_days(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
+        await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
         if callback.data == 'next_workout':
             training, new_day = await dal.Trainings.get_next_training(
                 user_id=callback.from_user.id,
@@ -428,6 +430,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.show_trainings, text='start_workout')
 async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
+    await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
     await callback.message.answer(
         '☝️ Помните, что указанный в упражнениях вес является приблизительным. '
         'Если вам тяжело или легко выполнять заданное количество упражнений с каким-то весом, '
@@ -971,7 +974,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         if 'bench_results' not in data.keys():
             data['bench_results'] = 'none'
 
-    await dal.User.add_attributes(state, callback.from_user.id)
+    await dal.User.add_attributes(state, callback.from_user.id, callback.message.chat.id)
     await state.set_state(BaseStates.show_trainings)
 
     await callback.message.edit_text(

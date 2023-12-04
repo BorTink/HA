@@ -49,7 +49,7 @@ class User:
         return db, cur
 
     @classmethod
-    async def add_attributes(cls, state, user_id):
+    async def add_attributes(cls, state, user_id, chat_id):
         user = await cls.select_attributes(user_id)
         async with state.proxy() as data:
             if user:
@@ -70,6 +70,7 @@ class User:
                     intensity = '{data['intensity']}',
                     health_restrictions = '{data['health_restrictions']}',
                     times_per_week = '{data['times_per_week']}'
+                    chat_id = {chat_id}
                     
                     WHERE tg_id = '{user_id}'
                 """)
@@ -79,6 +80,7 @@ class User:
                     INSERT INTO users
                     (
                     tg_id,
+                    chat_id,
                     gender,
                     age,
                     height,
@@ -98,6 +100,7 @@ class User:
                     VALUES
                     (
                     {user_id},
+                    {chat_id},
                     '{data['gender']}',
                     '{data['age']}',
                     '{data['height']}',
@@ -163,6 +166,16 @@ class User:
                         WHERE tg_id = {user_id}
                     """)
         logger.info(f'Параметр first_training у пользователя с id = {user_id} изменен на 0')
+
+        await db.commit()
+
+    @classmethod
+    async def update_chat_id_parameter(cls, user_id, chat_id):
+        await cur.execute(f"""
+            UPDATE users
+            SET chat_id = {chat_id}
+            WHERE tg_id = {user_id}
+        """)
 
         await db.commit()
 
