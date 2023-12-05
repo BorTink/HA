@@ -70,7 +70,7 @@ class ChatGPT:
             max_tokens=3000,
             temperature=0.5
         )
-        return response["choices"][0]["message"]['content']
+        return response["choices"][0].message.content
 
     async def gpt_create_timetable(self, message):
         self.messages = [
@@ -88,7 +88,7 @@ class ChatGPT:
             max_tokens=3000,
             temperature=0.5
         )
-        answer = response["choices"][0]["message"]['content']
+        answer = response["choices"][0].message.content
 
         self.messages = [
             self.starting_message,
@@ -102,7 +102,7 @@ class ChatGPT:
 
         logger.info(f'Все расписание - {answer}')
 
-        return response["choices"][0]["message"]['content']
+        return response["choices"][0].message.content
 
 
 async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
