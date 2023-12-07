@@ -168,6 +168,21 @@ async def process_workout(
     async def edit_message_text_def(text, chat_id, message_id, **kwargs):
         await bot.edit_message_text(text, chat_id, message_id, **kwargs)
 
+    async def end_not_last_workout():
+        training, day = await dal.Trainings.get_active_training_by_user_id(user_id)
+
+        async with state.proxy() as data:
+            next_training_in_days = int(day) - int(data['day'])
+
+            if next_training_in_days % 100 == 1:
+                day_word = 'день'
+            elif next_training_in_days % 100 in [2, 3, 4]:
+                day_word = 'дня'
+            else:
+                day_word = 'дней'
+
+            await message.answer(f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
+
     if user_id is None:
         user_id = message.from_user.id
     workout_in_process = workout_in_process.replace('<b>[ ', '').replace(' ]</b>', '')
@@ -227,6 +242,7 @@ async def process_workout(
                 day=new_day,
                 active=True
             )
+            await end_not_last_workout()
 
         else:
             await message.answer('🏆 Поздравляем с успешным завершением первой недели наших занятий!')
