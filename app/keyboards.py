@@ -48,7 +48,7 @@ max_results.add(max_results_1, max_results_2)
 expected_results = InlineKeyboardMarkup(resize_keyboard=True)
 expected_results_1 = InlineKeyboardButton('Набор массы', callback_data='muscle gain')
 expected_results_2 = InlineKeyboardButton('Улучшение рельефа (снижение веса)', callback_data='weight loss')
-expected_results.add(expected_results_1, expected_results_2)
+expected_results.add(expected_results_1).add(expected_results_2)
 
 intensity = InlineKeyboardMarkup(resize_keyboard=True)
 intensity_1 = InlineKeyboardButton('🧑‍💼 Умеренная', callback_data='low')
