@@ -425,8 +425,9 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
     attempts = 0
     while attempts < 3:
         try:
-            await process_prompt(
-                user_id=message.from_user.id
+            await process_prompt_next_week(
+                user_id=message.from_user.id,
+                client_edits_next_week=message.text
             )
             break
         except Exception as exc:
