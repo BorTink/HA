@@ -37,7 +37,7 @@ async def start(message: types.Message, state: FSMContext):
     await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
-    trainings, day = await dal.Trainings.get_trainings_by_day(message.from_user.id, 1)
+    trainings, day, active = await dal.Trainings.get_trainings_by_day(message.from_user.id, 1)
     logger.info(f'user - {user}')
     async with state.proxy() as data:
         if user and trainings:
@@ -297,7 +297,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
             data['workout'] = training
 
         await callback.message.edit_text(
-            f'День {day}\n' + training,
+            f'<b>День {day}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
             reply_markup=kb.trainings_tab_without_prev,
             parse_mode='HTML'
         )
@@ -346,7 +346,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
         await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
         await state.set_state(BaseStates.show_trainings)
         if callback.data == 'next_workout':
-            training, new_day = await dal.Trainings.get_next_training(
+            training, new_day, active = await dal.Trainings.get_next_training(
                 user_id=callback.from_user.id,
                 current_day=data['day']
             )
@@ -355,7 +355,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['workout'] = training
 
             else:
-                training, new_day = await dal.Trainings.get_trainings_by_day(
+                training, new_day, active = await dal.Trainings.get_trainings_by_day(
                     user_id=callback.from_user.id,
                     day=1
                 )
@@ -363,7 +363,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['workout'] = training
 
         elif callback.data == 'prev_workout':
-            training, new_day = await dal.Trainings.get_prev_training(
+            training, new_day, active = await dal.Trainings.get_prev_training(
                 user_id=callback.from_user.id,
                 current_day=data['day']
             )
@@ -372,7 +372,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                 data['workout'] = training
 
             else:
-                training, new_day = await dal.Trainings.get_prev_training(
+                training, new_day, active = await dal.Trainings.get_prev_training(
                     user_id=callback.from_user.id,
                     current_day=1000000
                 )
@@ -381,7 +381,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 
         reply_markup = await get_training_markup(callback.from_user.id, data['day'])
         await callback.message.edit_text(
-            f'День {data["day"]}\n' + training,
+            f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
             reply_markup=reply_markup,
             parse_mode='HTML'
         )
@@ -442,7 +442,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         active=True
     )
 
-    training, new_day = await dal.Trainings.get_trainings_by_day(
+    training, new_day, active = await dal.Trainings.get_trainings_by_day(
         user_id=message.from_user.id,
         day=1
     )
@@ -451,7 +451,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         data['workout'] = training
 
     await message.answer(
-        training,
+        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -486,7 +486,7 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='go_back')
 async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext):
-    training, new_day = await dal.Trainings.get_trainings_by_day(
+    training, new_day, active = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
     )
@@ -500,7 +500,7 @@ async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext)
     await asyncio.sleep(1)
 
     await callback.message.answer(
-        training,
+        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -517,7 +517,7 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
         current_weight = data['workout'][0].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await callback.message.answer(
-            f'День {data["day"]}\n' + workout_in_process,
+            f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + workout_in_process,
             reply_markup=kb.insert_weights_in_workout,
             parse_mode='HTML'
         )
@@ -591,7 +591,7 @@ async def ask_to_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='yes')
 async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
-    training, new_day = await dal.Trainings.get_trainings_by_day(
+    training, new_day, active = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
     )
@@ -615,7 +615,7 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
 
     await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
-        training,
+        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -649,7 +649,7 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
                 day=1,
                 active=True
             )
-            training, new_day = await dal.Trainings.get_trainings_by_day(
+            training, new_day, active = await dal.Trainings.get_trainings_by_day(
                 user_id=message.from_user.id,
                 day=1
             )
@@ -663,7 +663,7 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
             )
             await asyncio.sleep(2)
             await message.answer(
-                training,
+                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
                 reply_markup=kb.trainings_tab,
                 parse_mode='HTML'
             )
@@ -1074,7 +1074,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         day=1,
         active=True
     )
-    training, new_day = await dal.Trainings.get_trainings_by_day(
+    training, new_day, active = await dal.Trainings.get_trainings_by_day(
         user_id=callback.from_user.id,
         day=1
     )
@@ -1088,7 +1088,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
     await asyncio.sleep(2)
     await callback.message.answer(
-        training,
+        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )

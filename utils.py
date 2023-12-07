@@ -77,7 +77,7 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None):
     for i in range(1, 8):
         if trainings_prev_week != '':
             trainings_prev_week += '\n\n'
-        workout, _ = await dal.Trainings.get_trainings_by_day(user_id, i)
+        workout, _, _ = await dal.Trainings.get_trainings_by_day(user_id, i)
         if workout is None:
             trainings_prev_week += f'День {i} - Отдых'
         else:
@@ -232,7 +232,7 @@ async def process_workout(
             data=workout_in_process,
             active=False
         )
-        training, new_day = await dal.Trainings.get_next_training(
+        training, new_day, active = await dal.Trainings.get_next_training(
             user_id=user_id,
             current_day=data['day']
         )
@@ -303,7 +303,7 @@ async def process_workout(
             data['day'] = new_day
 
             await message.answer(
-                f'День {data["day"]}\n' + training,
+                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
                 reply_markup=kb.trainings_tab,
                 parse_mode='HTML'
             )
@@ -314,7 +314,9 @@ async def process_workout(
             data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await edit_message_text_def(text=f'День {data["day"]}\n' + workout_in_process,
+        await edit_message_text_def(text=f'<b>День {data["day"]}</b>\n' +
+                                         f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' +
+                                         workout_in_process,
                                     chat_id=message.chat.id,
                                     message_id=data['message'],
                                     reply_markup=kb.insert_weights_in_workout,
@@ -323,7 +325,7 @@ async def process_workout(
 
 
 async def get_training_markup(user_id, day, ):
-    next_training, _ = await dal.Trainings.get_next_training(
+    next_training, _, _ = await dal.Trainings.get_next_training(
         user_id=user_id,
         current_day=day
     )
@@ -333,7 +335,7 @@ async def get_training_markup(user_id, day, ):
         reply_markup = kb.trainings_tab_without_next
 
     else:
-        prev_training, _ = await dal.Trainings.get_prev_training(
+        prev_training, _, _ = await dal.Trainings.get_prev_training(
             user_id=user_id,
             current_day=day
         )

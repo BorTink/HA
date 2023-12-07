@@ -125,19 +125,19 @@ class Trainings:
     @classmethod
     async def get_trainings_by_day(cls, user_id, day):
         await cur.execute(f"""
-            SELECT data, day
+            SELECT data, day, active
             FROM trainings
             WHERE user_id = {user_id}
             AND day = {day}
             """)
         trainings = await cur.fetchone()
 
-        return trainings if trainings else (None, None)
+        return trainings if trainings else (None, None, None)
 
     @classmethod
     async def get_next_training(cls, user_id, current_day):
         await cur.execute(f"""
-                SELECT data, day
+                SELECT data, day, active
                 FROM trainings
                 WHERE user_id = {user_id}
                 AND day > {current_day}
@@ -145,12 +145,12 @@ class Trainings:
                 """)
         trainings = await cur.fetchone()
 
-        return trainings if trainings else (None, None)
+        return trainings if trainings else (None, None, None)
 
     @classmethod
     async def get_prev_training(cls, user_id, current_day):
         await cur.execute(f"""
-                SELECT data, day
+                SELECT data, day, active
                 FROM trainings
                 WHERE user_id = {user_id}
                 AND day < {current_day}
@@ -158,7 +158,7 @@ class Trainings:
                 """)
         trainings = await cur.fetchone()
 
-        return trainings if trainings else (None, None)
+        return trainings if trainings else (None, None, None)
 
     @classmethod
     async def get_all_active_trainings_with_dates(cls):
