@@ -303,7 +303,7 @@ async def process_workout(
             data['day'] = new_day
 
             await message.answer(
-                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+                f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
                 reply_markup=kb.trainings_tab,
                 parse_mode='HTML'
             )

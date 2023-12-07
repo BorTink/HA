@@ -381,7 +381,7 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 
         reply_markup = await get_training_markup(callback.from_user.id, data['day'])
         await callback.message.edit_text(
-            f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+            f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
             reply_markup=reply_markup,
             parse_mode='HTML'
         )
@@ -451,7 +451,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         data['workout'] = training
 
     await message.answer(
-        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -500,7 +500,7 @@ async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext)
     await asyncio.sleep(1)
 
     await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -615,7 +615,7 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
 
     await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
     )
@@ -663,7 +663,7 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
             )
             await asyncio.sleep(2)
             await message.answer(
-                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
+                f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
                 reply_markup=kb.trainings_tab,
                 parse_mode='HTML'
             )
@@ -1088,8 +1088,8 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
     await asyncio.sleep(2)
     await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '' + training,
-        reply_markup=kb.trainings_tab,
+        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
+        reply_markup=kb.trainings_tab_without_prev,
         parse_mode='HTML'
     )
 
