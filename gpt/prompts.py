@@ -23,10 +23,10 @@ Trainings per week - {prompt_data.times_per_week}\n
     prompt_text += f'Additionally: {client_changes}' if client_changes else ''
 
     prompt_text += f"""
-Current maximum results in exercises (kg): 
-squats - {prompt_data.squats_results}, 
-bench press - {prompt_data.bench_results}, 
-deadlift - {prompt_data.deadlift_results}. (weight with barbell 20 kg).
+Current working weight in three main exercises (kg): 
+squats - {prompt_data.squats_results} kg, 
+bench press - {prompt_data.bench_results} kg, 
+deadlift - {prompt_data.deadlift_results} kg. (weight including a 20 kg barbell).
 
 EXAMPLE:
 {{
@@ -84,10 +84,10 @@ Trainings per week - {prompt_data.times_per_week}\n
     prompt_text += f'Additionally: {client_changes}' if client_changes else ''
 
     prompt_text += f"""
-Current maximum results in exercises (kg): 
-squats - {prompt_data.squats_results}, 
-bench press - {prompt_data.bench_results}, 
-deadlift - {prompt_data.deadlift_results}. (weight with barbell 20 kg).
+Current working weight in three main exercises (kg): 
+squats - {prompt_data.squats_results} kg, 
+bench press - {prompt_data.bench_results} kg, 
+deadlift - {prompt_data.deadlift_results} kg. (weight including a 20 kg barbell).
 
 EXAMPLE:
 {{
@@ -132,10 +132,10 @@ Trainings per week - {prompt_data.times_per_week}\n
     prompt_text += f'Additionally: {client_changes}' if client_changes else ''
 
     prompt_text += f"""
-Current maximum results in exercises (kg): 
-squats - {prompt_data.squats_results}, 
-bench press - {prompt_data.bench_results}, 
-deadlift - {prompt_data.deadlift_results}. (weight with barbell 20 kg).
+Current working weight in three main exercises (kg): 
+squats - {prompt_data.squats_results} kg, 
+bench press - {prompt_data.bench_results} kg, 
+deadlift - {prompt_data.deadlift_results} kg. (weight including a 20 kg barbell).
 
 EXAMPLE:
 {{
