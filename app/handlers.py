@@ -339,10 +339,12 @@ async def back_to_menu(message: types.Message, state: FSMContext):
         reply_markup=kb.main
     )
 
+
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
 async def switch_days(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
+        await state.set_state(BaseStates.show_trainings)
         if callback.data == 'next_workout':
             training, new_day = await dal.Trainings.get_next_training(
                 user_id=callback.from_user.id,
