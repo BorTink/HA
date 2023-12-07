@@ -24,7 +24,7 @@ class Reminder:
         current_date = date.today()
 
         if current_date == training_date and any([
-            current_time.hour == 16 and current_time.minute == 10,
+            current_time.hour == 19 and current_time.minute == 0,
             current_time.hour == 18 and current_time.minute == 59,
             current_time.hour == 19 and current_time.minute == 1
         ]
