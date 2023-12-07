@@ -725,28 +725,17 @@ async def get_subscription(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.show_trainings, text='subscribe_later')
 async def subscribe_later(callback: types.CallbackQuery, state: FSMContext):
-    training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+    await callback.message.answer('Возвращаемся в главное меню', reply_markup=kb.always_markup)
+    await asyncio.sleep(1.5)
 
-    async with state.proxy() as data:
-        next_training_in_days = int(day) - int(data['day'])
-
-        if next_training_in_days % 100 == 1:
-            day_word = 'день'
-        elif next_training_in_days % 100 in [2, 3, 4]:
-            day_word = 'дня'
-        else:
-            day_word = 'дней'
-
-        await callback.message.answer(f'Отличная работа! Так держать! '
-                                      f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
-        await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
-        await asyncio.sleep(1.5)
-
-        await callback.message.answer(
-            f'День {data["day"]}\n' + data['workout'],
-            reply_markup=kb.trainings_tab,
-            parse_mode='HTML'
-        )
+    if callback.message.from_user.id in [635237071, 284863184]:
+        await callback.message.answer('ЭТО АДМИН ПАНЕЛЬ', reply_markup=kb.always_markup)
+        await callback.message.answer('Выберите действие',
+                                      reply_markup=kb.main_admin)
+    else:
+        await callback.message.answer('Здравствуйте!', reply_markup=kb.always_markup)
+        await callback.message.answer('Выберите действие',
+                                      reply_markup=kb.main)
 
 
 @dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text=['no', 'return_to_training'])
