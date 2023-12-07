@@ -163,7 +163,7 @@ class Trainings:
     @classmethod
     async def get_all_active_trainings_with_dates(cls):
         await cur.execute(f"""
-                SELECT t.user_id, t.created_date, t.day, u.chat_id
+                SELECT t.user_id, t.created_date, t.day
                 FROM trainings t
                 JOIN users u ON t.user_id = u.tg_id
                 WHERE t.active = 1
