@@ -16,7 +16,6 @@ import dal
 from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup
 from app import keyboards as kb
 from gpt.chat import ChatGPT
-from gpt.chat_test import ChatGPTTest
 from .states import PersonChars, BaseStates, Admin
 
 # ----- СТАРТ И ПОДПИСКА ---------
