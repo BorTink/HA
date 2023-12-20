@@ -12,11 +12,12 @@ from aiogram.types.message import ContentType
 from dotenv import load_dotenv
 from loguru import logger
 
-from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup
-from .states import PersonChars, BaseStates, Admin
-from app import keyboards as kb
 import dal
+from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup
+from app import keyboards as kb
 from gpt.chat import ChatGPT
+from gpt.chat_test import ChatGPTTest
+from .states import PersonChars, BaseStates, Admin
 
 # ----- СТАРТ И ПОДПИСКА ---------
 
@@ -51,22 +52,12 @@ async def start(message: types.Message, state: FSMContext):
                                      reply_markup=kb.main)
         else:
             await message.answer(
-                '👋 Добро пожаловать! Я виртуальный тренер Health AI. Помогу составить сбалансированные планы тренировок '
-                'под ваши индивидуальные запросы.',
+                '👋 Добро пожаловать! Я — виртуальный тренер Health AI. '
+                'Помогу составить вам индивидуальный план тренировок. '
+                'Подберу подходящие нагрузки и буду увеличивать по мере вашего прогресса.',
                 parse_mode='Markdown'
             )
-            await asyncio.sleep(1)
-            await message.answer(
-                '💪 С моей помощью вы сможете разработать эффективную программу занятий и легко отслеживать свой прогресс.',
-                parse_mode='Markdown'
-            )
-            await asyncio.sleep(1)
-            await message.answer(
-                '_Тренировки, разработанные Health AI, основаны на научных работах и советах профессиональных тренеров, '
-                'но несут исключительно рекомендательный характер._',
-                parse_mode='Markdown'
-            )
-            await asyncio.sleep(1)
+            await asyncio.sleep(1.5)
             await message.answer(
                 '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
                 reply_markup=kb.main_new,
@@ -142,26 +133,26 @@ async def buy_subscription(message: types.Message, state: FSMContext):
 
     with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
         await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await message.answer(
         '🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
         'рекомендуем оформить ежемесячную подписку!'
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await message.answer(
         '📈 Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
         'для получения максимальной пользы.'
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await message.answer("Основные преимущества подписки:\n"
                          "▫️Регулярное обновление программы тренировок;\n"
                          "▫️Высокая персонализация (с опорой на ваши результаты);\n"
                          "▫️Повышенная эффективность от тренировок;\n"
                          "▫️Возможность обновлять свои данные;\n"
                          "▫️Поддержка на всём периоде занятий")
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await message.answer('Стоимость подписки 399 руб/мес.')
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await message.answer(
         'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!'
     )
@@ -305,15 +296,15 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     elif not subscribed:
         await state.set_state(BaseStates.end_of_trial)
         await callback.message.edit_text('Пробный период подошёл к концу.')
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.5)
         await callback.message.answer(
             'Если вы хотите продолжить заниматься по персональной адаптивной программе, '
             'оформите ежемесячную подписку. С ней у вас будет доступ к новым тренировкам, '
             'возможность и дальше отслеживать свой прогресс и многое другое.'
         )
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.5)
         await callback.message.answer('Стоимость подписки 399 руб/мес.')
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.5)
         await callback.message.answer(
             'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
             reply_markup=kb.subscribe_proposition
@@ -466,11 +457,11 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
         'поменяйте его исходя из ваших возможностей.',
         reply_markup=types.ReplyKeyboardRemove()
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await callback.message.answer(
         'При возникновении любых проблем обязательно проконсультируйтесь с лицензированным специалистом!'
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await state.set_state(BaseStates.start_workout)
     async with state.proxy() as data:
         data['weight_index'] = 0
@@ -497,7 +488,7 @@ async def go_back_to_trainings(callback: types.CallbackQuery, state: FSMContext)
     await state.set_state(BaseStates.show_trainings)
 
     await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
 
     await callback.message.answer(
         f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
@@ -611,7 +602,7 @@ async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.delete()
 
     await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
 
     await state.set_state(BaseStates.show_trainings)
     await callback.message.answer(
@@ -749,21 +740,21 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 
 @dp.callback_query_handler(state='*', text=['update_data', 'insert_data'])
 async def create_edit(callback: types.CallbackQuery):
+    await asyncio.sleep(1.5)
     await callback.message.answer(
-        '🏃 Начинаем пробный период! Туда включён план тренировок на первую неделю и возможность 1 раз пересобрать его.'
+        '🏃🏽 Пробный период начался! '
+        '*Сейчас вам доступно:*'
+        '• 1 тренировка с возможностью пересборки на ваших комментариях (если вам не понравится);'
+        '• Внесение результатов тренировки и просмотр первой тренировки следующей недели;'
+        '• Просмотр вашей персональной траектории развития на 9 недель',
+        parse_mode='Markdown'
     )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await callback.message.answer(
-        '➡️ После завершения пробного периода вам будет предложено оформить подписку '
-        'для продолжения занятий и доступа к продвинутому функционалу.'
+        '💬 Осталось ответить на *вопросы* и ваш план тренировок будет готов!',
+        parse_mode='Markdown'
     )
-    await asyncio.sleep(1)
-    await callback.message.answer(
-        """
-       💬 Пожалуйста, пройдите небольшую анкету, чтобы я смог составить вам план персональных тренировок на эту неделю.
-        """
-    )
-    await asyncio.sleep(1)
+    await asyncio.sleep(1.5)
     await callback.message.answer(
         'Укажите свой пол',
         reply_markup=kb.gender
