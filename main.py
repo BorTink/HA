@@ -14,6 +14,7 @@ async def on_startup(_):
     await dal.Trainings.create_trainings()
     await dal.Reviews.create_reviews()
     await dal.Starts.create_starts()
+    await dal.Meals.create_meals()
     logger.info(f'Бот успешно запущен!')
 
 

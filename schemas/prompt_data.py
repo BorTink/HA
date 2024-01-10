@@ -19,6 +19,7 @@ class PromptData(BaseModel):
     goals: str
     intensity: str
     health_restrictions: str
+    allergy: str
     times_per_week: int
 
     rebuilt: bool

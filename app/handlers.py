@@ -13,7 +13,8 @@ from dotenv import load_dotenv
 from loguru import logger
 
 import dal
-from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup
+from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup, \
+    proccess_meal_plan_prompt
 from app import keyboards as kb
 from gpt.chat import ChatGPT
 from .states import PersonChars, BaseStates, Admin
@@ -26,7 +27,7 @@ storage = RedisStorage2('localhost', 6379, db=5, pool_size=10, prefix='my_fsm_ke
 dp = Dispatcher(bot=bot, storage=storage)
 dp.middleware.setup(LoggingMiddleware())
 
-PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=399*100)
+PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=399 * 100)
 
 
 @dp.message_handler(state='*', commands=['start'])
@@ -51,16 +52,14 @@ async def start(message: types.Message, state: FSMContext):
                                      reply_markup=kb.main)
         else:
             await message.answer(
-                '👋 Добро пожаловать! Я — виртуальный тренер Health AI. '
-                'Помогу составить вам индивидуальный план тренировок. '
-                'Подберу подходящие нагрузки и буду увеличивать по мере вашего прогресса.',
-                parse_mode='Markdown'
-            )
-            await asyncio.sleep(1.5)
-            await message.answer(
-                '_Мы не несём ответственности за травмы, которые могут быть получены в процессе выполнения упражнений._',
+                '- 👋 Добро пожаловать\n'
+                'Я — виртуальный тренер Health AI.\n\n'
+                '🎯 Составлю вам индивидуальный и наиболее эффективный для вас план тренировок '
+                'и питания с траекторией развития на 9 недель;\n\n'
+                'Приступая к тренировкам, вы подтверждаете, что ознакомились с информацией на '
+                '<a href="https://health-ai.ru/ai">нашем сайте</a>.',
                 reply_markup=kb.main_new,
-                parse_mode='Markdown'
+                parse_mode='HTML'
             )
 
 
@@ -129,7 +128,6 @@ async def assistant_message(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state='*', text='Купить подписку')
 async def buy_subscription(message: types.Message, state: FSMContext):
-
     with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
         await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
     await asyncio.sleep(1.5)
@@ -215,15 +213,22 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 
 
 @dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
-async def successful_payment(message: types.Message):
+async def successful_payment(message: types.Message, state: FSMContext):
     logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно')
     await dal.User.update_subscribed_parameter(message.from_user.id, 1)
-    await message.answer(f'Спасибо за покупку подписки! Ждем тебя на следующей тренировке!')
+    await message.answer(f'Спасибо за покупку подписки!')
+
+    await state.set_state(BaseStates.end_of_week_changes)
+    temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
+                                        'напишите коррективы, которые вы бы хотели внести '
+                                        'в тренировки в целом '
+                                        '(до 100 символов)')
+    async with state.proxy() as data:
+        data['temp_message'] = temp_message.message_id
 
 
 @dp.message_handler(state='*', text='Вернуться в главное меню')
 async def back_to_menu(message: types.Message, state: FSMContext):
-    await dal.User.update_chat_id_parameter(message.from_user.id, message.chat.id)
     if state:
         await state.finish()
 
@@ -273,12 +278,13 @@ async def write_review(message: types.Message, state: FSMContext):
         reply_markup=kb.main
     )
 
+
 # ----- УПРАВЛЕНИЕ РАСПИСАНИЕМ ---------
 
 
 @dp.callback_query_handler(state='*', text=['SHOW_TIMETABLE', 'back_to_timetable'])
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(BaseStates.show_trainings)
+    await state.set_state(BaseStates.start_workout)
     training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
     subscribed = await dal.User.check_if_subscribed_by_user_id(callback.from_user.id)
     if training:
@@ -288,7 +294,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
         await callback.message.edit_text(
             f'<b>День {day}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
-            reply_markup=kb.trainings_tab_without_prev,
+            reply_markup=kb.insert_weights_in_workout,
             parse_mode='HTML'
         )
 
@@ -320,7 +326,6 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.end_of_trial, text='subscribe_later')
 async def back_to_menu(message: types.Message, state: FSMContext):
-    await dal.User.update_chat_id_parameter(message.from_user.id, message.chat.id)
     if state:
         await state.finish()
 
@@ -333,7 +338,7 @@ async def back_to_menu(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state='*', text=['next_workout', 'prev_workout'])
 async def switch_days(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
+
         await state.set_state(BaseStates.show_trainings)
         if callback.data == 'next_workout':
             training, new_day, active = await dal.Trainings.get_next_training(
@@ -407,7 +412,7 @@ async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContex
 @dp.message_handler(state=BaseStates.rebuild_workouts)
 async def rebuild_workouts(message: types.Message, state: FSMContext):
     await message.answer(
-        '⏳Подождите, пересобираем персональную тренировку'
+        '⏳ Подождите около 2-х минут, ии-тренер составляет вам персональную тренировку.'
     )
 
     await state.set_state(BaseStates.show_trainings)
@@ -441,6 +446,10 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         data['workout'] = training
 
     await message.answer(
+        '💡Если нажать на выделенные слова, вы перийдете на сайт с инструкцией к упражнению'
+    )
+
+    await message.answer(
         f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
         reply_markup=kb.trainings_tab,
         parse_mode='HTML'
@@ -449,7 +458,6 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.show_trainings, text='start_workout')
 async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
-    await dal.User.update_chat_id_parameter(callback.from_user.id, callback.message.chat.id)
     await callback.message.answer(
         '☝️ Помните, что указанный в упражнениях вес является приблизительным. '
         'Если вам тяжело или легко выполнять заданное количество упражнений с каким-то весом, '
@@ -734,6 +742,50 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
     await state.set_state(BaseStates.start_workout)
 
 
+@dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text='meal_plan')
+async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
+    meals = await dal.Meals.get_all_meals_by_user_id(callback.from_user.id)
+    await state.set_state(BaseStates.meals)
+    if meals:
+        meal_plan = meals[0].meal_plan
+        await callback.message.answer(
+            meal_plan,
+            reply_markup=kb.meal_plan
+        )
+    else:
+        await callback.message.answer(
+            '⏳Ваш план питания составляется, подождите (не более 2х минут)…'
+        )
+
+        meal_plan = await proccess_meal_plan_prompt(callback.from_user.id)
+
+        await callback.message.answer(
+            '🍏 Ваш план питания составлен! \n\n'
+            'Старайтесь следовать инструкциям!'
+        )
+
+        await callback.message.answer(
+            meal_plan,
+            reply_markup=kb.meal_plan
+        )
+
+
+@dp.callback_query_handler(state=BaseStates.meals, text='go_to_workout')
+async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data['message'] = callback.message.message_id
+        data['workout'], data['day'] = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+        data['workout'] = data['workout'].split(' кг')
+
+        if 'weight_index' not in data.keys():
+            data['weight_index'] = 0
+        else:
+            data['weight_index'] -= 1
+        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
+
+
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
 
@@ -741,11 +793,12 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 async def create_edit(callback: types.CallbackQuery):
     await asyncio.sleep(1.5)
     await callback.message.answer(
-        '🏃🏽 Пробный период начался! '
-        '*Сейчас вам доступно:*\n'
-        '• 1 тренировка с возможностью пересборки на ваших комментариях (если вам не понравится);\n'
-        '• Внесение результатов тренировки и просмотр первой тренировки следующей недели;\n'
-        '• Просмотр вашей персональной траектории развития на 9 недель',
+        '- 🏃🏽 Пробный период начался!\n'
+        'Сейчас вам доступно:\n'
+        '- 1 тренировка с возможностью пересборки на ваших комментариях (если вам что-то не понравится);\n\n'
+        '- Внесение своих показателей тренировки и просмотр тренировки 7-й недели;\n\n'
+        '- Просмотр вашей персональной траектории развития на 9 недель;\n\n'
+        '- План питания на день в соответствии с вашими целями;',
         parse_mode='Markdown'
     )
     await asyncio.sleep(1.5)
@@ -1003,9 +1056,24 @@ async def add_intensity(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.message_handler(state=PersonChars.health_restrictions)
-async def add_intensity(message: types.Message, state: FSMContext):
+async def add_allergy_products(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['health_restrictions'] = message.text
+
+        await message.delete()
+        await bot.edit_message_text(
+            'Есть ли у вас продукты, на которых у вас аллергия или которые избегаете? (Напишите до 100 символов)',
+            chat_id=message.chat.id,
+            message_id=data['info_message']
+        )
+
+        await PersonChars.allergy.set()
+
+
+@dp.message_handler(state=PersonChars.allergy)
+async def add_intensity(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['allergy'] = message.text
 
         await message.delete()
         await bot.edit_message_text(
@@ -1030,11 +1098,11 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         if 'bench_results' not in data.keys():
             data['bench_results'] = 'none'
 
-    await dal.User.add_attributes(state, callback.from_user.id, callback.message.chat.id)
-    await state.set_state(BaseStates.show_trainings)
+    await dal.User.add_attributes(state, callback.from_user.id)
+    await state.set_state(BaseStates.start_workout)
 
     await callback.message.edit_text(
-        '⏳Подождите, составляем персональную тренировку'
+        '⏳ Подождите около 2-х минут, ии-тренер составляет вам персональную тренировку.'
     )
 
     attempts = 0
@@ -1057,21 +1125,41 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         user_id=callback.from_user.id,
         day=1
     )
+    if training is None:
+        await callback.message.answer('При создании тренировки произошла ошибка')
+
     async with state.proxy() as data:
         data['day'] = 1
-        data['workout'] = training
+        data['weight_index'] = 0
+        data['workout'] = training.split(' кг')
 
     await callback.message.answer(
-        '✅ План вашей первой тренировки готов! Попробуйте его выполнить и возвращайтесь с обратной связью!',
+        '✅ Ваша первая тренировка составлена!\n' 
+        '(вы можете ее пересобрать при необходимости)\n\n\n'
+        '💡Если нажать на выделенные слова, вы перийдете на сайт с инструкцией к упражнению;\n\n\n'
+        '• введите подходящий вес, нажав кнопку «ввести вес», для каждого упражнения, чтобы улучшить тренировки;\n\n\n'    
+        '🚀 Удачной тренировки, вы достигните своих целей!\n'
+    )
+    await asyncio.sleep(3)
+    await callback.message.answer(
+        '🏁 Чтобы завершить тренировку, нажмите ввести вес, если вес не подошел, либо завершить тренировку.',
         reply_markup=kb.always_markup
     )
     await asyncio.sleep(2)
-    await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
-        reply_markup=kb.trainings_tab_without_prev,
-        parse_mode='HTML'
+
+    await dal.Trainings.update_in_progress_training_by_day(
+        user_id=callback.from_user.id,
+        day=data['day'],
+        in_progress=True
     )
 
+    current_weight = data['workout'][0].split(' ')[-1]
+    workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+    await callback.message.answer(
+        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + workout_in_process,
+        reply_markup=kb.insert_weights_in_workout,
+        parse_mode='HTML'
+    )
 
 # ----- ОБЫЧНЫЙ ChatGPT ---------
 

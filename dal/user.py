@@ -36,6 +36,7 @@ class User:
                     goals TEXT,
                     intensity TEXT,
                     health_restrictions TEXT,
+                    allergy TEXT,
                     times_per_week INTEGER,
                     
                     rebuilt BOOLEAN DEFAULT 0 CHECK (rebuilt IN (0, 1)),
@@ -49,7 +50,7 @@ class User:
         return db, cur
 
     @classmethod
-    async def add_attributes(cls, state, user_id, chat_id):
+    async def add_attributes(cls, state, user_id):
         user = await cls.select_attributes(user_id)
         async with state.proxy() as data:
             if user:
@@ -69,8 +70,8 @@ class User:
                     goals = '{data['goals']}',
                     intensity = '{data['intensity']}',
                     health_restrictions = '{data['health_restrictions']}',
+                    allergy = '{data['allergy']}',
                     times_per_week = '{data['times_per_week']}'
-                    chat_id = {chat_id}
                     
                     WHERE tg_id = '{user_id}'
                 """)
@@ -80,7 +81,6 @@ class User:
                     INSERT INTO users
                     (
                     tg_id,
-                    chat_id,
                     gender,
                     age,
                     height,
@@ -94,13 +94,13 @@ class User:
                     goals,
                     intensity,
                     health_restrictions,
+                    allergy,
                     times_per_week
                     
                     )
                     VALUES
                     (
                     {user_id},
-                    {chat_id},
                     '{data['gender']}',
                     '{data['age']}',
                     '{data['height']}',
@@ -114,6 +114,7 @@ class User:
                     '{data['goals']}',
                     '{data['intensity']}',
                     '{data['health_restrictions']}',
+                    '{data['allergy']}',
                     '{data['times_per_week']}'
                     )
                 """
@@ -177,16 +178,6 @@ class User:
                             WHERE tg_id = {user_id}
                         """)
         logger.info(f'Параметр week у пользователя с id = {user_id} увеличен на 1')
-
-        await db.commit()
-
-    @classmethod
-    async def update_chat_id_parameter(cls, user_id, chat_id):
-        await cur.execute(f"""
-            UPDATE users
-            SET chat_id = {chat_id}
-            WHERE tg_id = {user_id}
-        """)
 
         await db.commit()
 

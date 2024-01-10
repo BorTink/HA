@@ -26,7 +26,7 @@ main_admin_2 = InlineKeyboardButton('Показать расписание', cal
 main_admin.add(main_admin_1).add(main_admin_2)
 
 main_new = InlineKeyboardMarkup(resize_keyboard=True)
-main_new_1 = InlineKeyboardButton('Приступить к созданию тренировок', callback_data='insert_data')
+main_new_1 = InlineKeyboardButton('🔓 Начать пробный период', callback_data='insert_data')
 main_new.add(main_new_1)
 
 gender = InlineKeyboardMarkup(resize_keyboard=True)
@@ -93,14 +93,20 @@ start_workout_2 = InlineKeyboardButton('Вернуться назад', callback
 start_workout.add(start_workout_1).add(start_workout_2)
 
 insert_weights_in_workout = InlineKeyboardMarkup(resize_keyboard=True)
-insert_weights_in_workout_1 = InlineKeyboardButton('Пропустить', callback_data='skip_weight')
-insert_weights_in_workout_2 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
-insert_weights_in_workout_3 = InlineKeyboardButton('Покинуть тренировку', callback_data='leave_workout')
-insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2).add(insert_weights_in_workout_3)
+insert_weights_in_workout_1 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
+insert_weights_in_workout_2 = InlineKeyboardButton('Завершить тренировку', callback_data='leave_workout')
+insert_weights_in_workout_3 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')
+insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)
+insert_weights_in_workout.add(insert_weights_in_workout_3)
 
 insert_weight = InlineKeyboardMarkup(resize_keyboard=True)
-insert_weight_1 = InlineKeyboardButton('Вернуться к тренировке', callback_data='return_to_training')
-insert_weight.add(insert_weight_1)
+insert_weight_1 = InlineKeyboardButton('Перейти к следующему упражнению', callback_data='next_exercise')
+insert_weight_2 = InlineKeyboardButton('Перейти к предыдущему упражнению', callback_data='prev_exercise')
+insert_weight.add(insert_weight_1).add(insert_weight_2)
+
+meal_plan = InlineKeyboardMarkup()
+meal_plan_1 = InlineKeyboardButton('Тренировка', callback_data='go_to_workout')
+meal_plan.add(meal_plan_1)
 
 leave_workout = InlineKeyboardMarkup(resize_keyboard=True)
 leave_workout_1 = InlineKeyboardButton('Да', callback_data='yes')

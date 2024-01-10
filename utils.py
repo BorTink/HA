@@ -1,7 +1,7 @@
 from loguru import logger
 import asyncio
 
-from gpt.chat import fill_prompt, fill_prompt_next_week
+from gpt.chat import fill_prompt, fill_prompt_next_week, fill_meal_plan_prompt
 from app.states import BaseStates
 import app.keyboards as kb
 import dal
@@ -11,63 +11,76 @@ async def process_prompt(user_id, client_changes=None):
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
 
-    trainings = await fill_prompt(data, client_changes)
+    training = await fill_prompt(data, client_changes)
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
+    training.replace('"', '').replace("""'""", '')
+    training = replace_nth_occ(training, '**', '</b>', 2)
+    training.replace('**', '<b>')
+    training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение').split('\n')[1:]
+
     day_number = 1
-    for training in trainings:
-        if 'Отдых' in training:
-            day_number += 1
-        else:
-            cur_training = training.replace('"', '').replace("""'""", '')
-            cur_training = cur_training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение').split('\n')[1:]
+    final_training = []
 
-            final_training = []
-            for line in cur_training:
-                if len(line) < 5 or 'Разминка' in line:
-                    final_training.append(line)
-                    continue
+    for line in training:
+        if len(line) < 5 or 'Разминка' in line:
+            final_training.append(line)
+            continue
 
-                exercise_name = line.split(' -')[0]
-                exercise_name_words = exercise_name.split()
-                similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
+        exercise_name = line.split(' -')[0]
+        exercise_name_words = exercise_name.split()
+        similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
 
-                if similar_exercises:
-                    temp_exercises = []
+        if similar_exercises:
+            temp_exercises = []
 
-                    for word in exercise_name_words:
-                        for exercise in similar_exercises:
-                            if word in exercise.name:
-                                temp_exercises.append(exercise)
+            for word in exercise_name_words:
+                for exercise in similar_exercises:
+                    if word in exercise.name:
+                        temp_exercises.append(exercise)
 
-                        if not temp_exercises:
-                            break
+                if not temp_exercises:
+                    break
 
-                        similar_exercises = temp_exercises
-                        temp_exercises = []
+                similar_exercises = temp_exercises
+                temp_exercises = []
 
-                    min_len_word = 100000
-                    final_exercise = None
-                    for exercise in similar_exercises:
-                        if len(exercise.name) < min_len_word:
-                            min_len_word = len(exercise.name)
-                            final_exercise = exercise
+            min_len_word = 100000
+            final_exercise = None
+            for exercise in similar_exercises:
+                if len(exercise.name) < min_len_word:
+                    min_len_word = len(exercise.name)
+                    final_exercise = exercise
 
-                    exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
+            exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
 
-                final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
+        final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
 
-            final_training = '\n'.join(final_training)
+    final_training = '\n'.join(final_training)
 
-            await dal.Trainings.update_trainings(
-                user_id=int(user_id),
-                day=day_number,
-                data=final_training
-            )
-            day_number += 1
+    await dal.Trainings.update_trainings(
+        user_id=int(user_id),
+        day=day_number,
+        data=final_training
+    )
 
-    return trainings
+    return final_training
+
+
+async def proccess_meal_plan_prompt(user_id):
+    logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
+    data = await dal.User.select_attributes(user_id)
+
+    meal_plan = await fill_meal_plan_prompt(data)
+
+    await dal.Meals.insert_meal(
+        user_id=int(user_id),
+        day=1,
+        meal_plan=meal_plan
+    )
+
+    return meal_plan
 
 
 async def process_prompt_next_week(user_id, client_edits_next_week=None):
@@ -207,16 +220,16 @@ async def process_workout(
         first_training = await dal.User.check_if_first_training_by_user_id(user_id)
         if first_training:
             await edit_message_text_def(text='🎉 Поздравляем вас с первым успешным занятием!',
-                                                  chat_id=message.chat.id,
-                                                  message_id=data['message']
-                                                  )
+                                        chat_id=message.chat.id,
+                                        message_id=data['message']
+                                        )
             await asyncio.sleep(1)
 
         else:
             await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',
-                                                  chat_id=message.chat.id,
-                                                  message_id=data['message']
-                                                  )
+                                        chat_id=message.chat.id,
+                                        message_id=data['message']
+                                        )
             await asyncio.sleep(1)
 
         await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
@@ -245,13 +258,22 @@ async def process_workout(
             await end_not_last_workout()
 
         else:
-            await message.answer('🏆 Поздравляем с успешным завершением первой недели наших занятий!')
-            await asyncio.sleep(2)
             if not subscribed:
-                await message.answer('Пробный период подошёл к концу. '
-                                     'Если вы хотите продолжить заниматься по персональной адаптивной программе, '
-                                     'оформите ежемесячную подписку. С ней у вас будет доступ к новым тренировкам, '
-                                     'возможность и дальше отслеживать свой прогресс и многое другое.')
+                await message.answer('〰️ Чтобы продолжить заниматься  и достичь цели, вам необходимо '
+                                     'оплатить *подписку* или сразу купить *план на 9 недель:*\n\n\n'
+                                     '• 399 руб./ мес.\n\n'
+                                     '• 749 руб./ 9 недель (вместо 1197 руб.)',
+                                     parse_mode='Markdown')
+                await asyncio.sleep(2)
+
+                await message.answer(
+                    'Функции:\n\n'
+                    '📈 Прогрессивная программа тренировок на 9 недель, разработанная для вас, '
+                    'учитывая ваши желания\n\n\n'
+                    '🍏 Изменяющийся план питания на протяжении всего периода тренировок\n\n\n'
+                    '⚙️ Возможность менять и модифицировать тренировки и питание под себя\n\n\n'
+                    '🎯 Наивысшая эффективность за счет индивидуального подхода\n\n\n'
+                    '🛟 Поддержка на всём периоде занятий')
                 await asyncio.sleep(1)
                 await message.answer('Стоимость подписки 399 руб/мес.')
                 await asyncio.sleep(1)
@@ -262,51 +284,10 @@ async def process_workout(
             else:
                 await state.set_state(BaseStates.end_of_week_changes)
                 temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
-                                     'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
-                                     '(до 100 символов)')
+                                                    'напишите коррективы, которые вы бы хотели внести '
+                                                    'в тренировки в целом '
+                                                    '(до 100 символов)')
                 data['temp_message'] = temp_message.message_id
-
-        if not subscribed and first_training:
-            await dal.User.update_first_training_parameter(user_id)
-
-            await message.answer(
-                '🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
-                'рекомендуем оформить ежемесячную подписку!',
-                reply_markup=kb.always_markup
-            )
-            await asyncio.sleep(1)
-            await message.answer(
-                '📈 Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
-                'для получения максимальной пользы.'
-            )
-            await asyncio.sleep(1)
-            await message.answer("Основные преимущества подписки:\n"
-                                 "▫️Регулярное обновление программы тренировок;\n"
-                                 "▫️Высокая персонализация (с опорой на ваши результаты);\n"
-                                 "▫️Повышенная эффективность от тренировок;\n"
-                                 "▫️Возможность обновлять свои данные;\n"
-                                 "▫️Поддержка на всём периоде занятий")
-            await asyncio.sleep(1)
-            await message.answer('Стоимость подписки 399 руб/мес.')
-            await asyncio.sleep(1)
-            await message.answer(
-                'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
-                reply_markup=kb.subscribe_proposition
-            )
-
-        else:
-            await dal.User.update_first_training_parameter(user_id)
-            await message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
-            await asyncio.sleep(1.5)
-
-            data['workout'] = training
-            data['day'] = new_day
-
-            await message.answer(
-                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
-                reply_markup=kb.trainings_tab,
-                parse_mode='HTML'
-            )
 
     else:
         await state.set_state(BaseStates.start_workout)
@@ -343,3 +324,15 @@ async def get_training_markup(user_id, day, ):
             reply_markup = kb.trainings_tab_without_prev
 
     return reply_markup
+
+
+def replace_nth_occ(string, sub, replace_string, n):
+    find = string.find(sub)
+    i = 1
+    while find != -1:
+        if i == n:
+            string = string[:find]+replace_string+string[find + len(sub):]
+            i = 0
+        find = string.find(sub, find + len(sub) + 1)
+        i += 1
+    return string

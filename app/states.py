@@ -17,6 +17,7 @@ class PersonChars(StatesGroup):
     focus = State()
     intensity = State()
     health_restrictions = State()
+    allergy = State()
     times_per_week = State()
 
 
@@ -29,6 +30,7 @@ class BaseStates(StatesGroup):
     rebuild_workouts = State()
     start_workout = State()
     add_weight = State()
+    meals = State()
     support = State()
     add_review = State()
     end_of_week_changes = State()
