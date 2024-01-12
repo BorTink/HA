@@ -19,15 +19,17 @@ async def process_prompt(user_id, client_changes=None):
     training = replace_nth_occ(training, '**', '</b>', 2)
     training = training.replace('**', '<b>')
     training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
-    training = training.split('<b>День 1')[1]
-    training = '<b>День 1' + training
+    training = training.split('<b>День')[1]
+    training = '<b>День' + training
     training = training.split('\n')
 
     day_number = 1
     final_training = []
 
     for line in training:
-        if len(line) < 5 or 'Разминка' in line or 'День' in line:
+        if 'День' in line:
+            continue
+        if len(line) < 5 or 'Разминка' in line:
             final_training.append(line)
             continue
 
