@@ -108,8 +108,7 @@ meal_plan = InlineKeyboardMarkup()
 meal_plan_1 = InlineKeyboardButton('Тренировка', callback_data='go_to_workout')
 meal_plan.add(meal_plan_1)
 
-leave_workout = InlineKeyboardMarkup(resize_keyboard=True)
-leave_workout_1 = InlineKeyboardButton('Да', callback_data='yes')
-leave_workout_2 = InlineKeyboardButton('Нет', callback_data='no')
-leave_workout.add(leave_workout_1, leave_workout_2)
-
+complete_workout = InlineKeyboardMarkup(resize_keyboard=True)
+complete_workout_1 = InlineKeyboardButton('Да', callback_data='yes')
+complete_workout_2 = InlineKeyboardButton('Нет', callback_data='no')
+complete_workout.add(complete_workout_1, complete_workout_2)

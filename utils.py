@@ -15,21 +15,24 @@ async def process_prompt(user_id, client_changes=None):
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
-    training.replace('"', '').replace("""'""", '')
+    training = training.replace('"', '').replace("""'""", '')
     training = replace_nth_occ(training, '**', '</b>', 2)
-    training.replace('**', '<b>')
-    training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение').split('\n')[1:]
+    training = training.replace('**', '<b>')
+    training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
+    training = training.split('<b>День 1')[1]
+    training = '<b>День 1' + training
+    training = training.split('\n')
 
     day_number = 1
     final_training = []
 
     for line in training:
-        if len(line) < 5 or 'Разминка' in line:
+        if len(line) < 5 or 'Разминка' in line or 'День' in line:
             final_training.append(line)
             continue
 
         exercise_name = line.split(' -')[0]
-        exercise_name_words = exercise_name.split()
+        exercise_name_words = exercise_name.replace('-', '').split()
         similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
 
         if similar_exercises:
@@ -73,6 +76,9 @@ async def proccess_meal_plan_prompt(user_id):
     data = await dal.User.select_attributes(user_id)
 
     meal_plan = await fill_meal_plan_prompt(data)
+
+    meal_plan = replace_nth_occ(meal_plan, '**', '</b>', 2)
+    meal_plan = meal_plan.replace('**', '<b>')
 
     await dal.Meals.insert_meal(
         user_id=int(user_id),
@@ -204,6 +210,11 @@ async def process_workout(
     if data['weight_index'] == len(data['workout']) - 2:
         await state.set_state(BaseStates.show_trainings)
 
+        try:
+            await bot.delete_message(message.chat.id, data['temp_message'])
+        except:
+            pass
+
         for i in range(len(data['workout']) - 1):
             cur_segment = data['workout'][i].split('\n')[-1].split(' ')
             cur_segment = [x for x in cur_segment if x]
@@ -290,11 +301,12 @@ async def process_workout(
                 data['temp_message'] = temp_message.message_id
 
     else:
-        await state.set_state(BaseStates.start_workout)
         if not return_to_training:
             data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        cur_state = await state.get_state()
+        print(cur_state)
         await edit_message_text_def(text=f'<b>День {data["day"]}</b>\n' +
                                          f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' +
                                          workout_in_process,
@@ -303,6 +315,122 @@ async def process_workout(
                                     reply_markup=kb.insert_weights_in_workout,
                                     parse_mode='HTML'
                                     )
+
+
+async def complete_training(
+        workout_in_process,
+        data,
+        state,
+        message,
+        kb,
+        user_id=None
+):
+    from app.handlers import bot
+
+    async def edit_message_text_def(text, chat_id, message_id, **kwargs):
+        await bot.edit_message_text(text, chat_id, message_id, **kwargs)
+
+    async def end_not_last_workout():
+        training, day = await dal.Trainings.get_active_training_by_user_id(user_id)
+
+        async with state.proxy() as data:
+            next_training_in_days = int(day) - int(data['day'])
+
+            if next_training_in_days % 100 == 1:
+                day_word = 'день'
+            elif next_training_in_days % 100 in [2, 3, 4]:
+                day_word = 'дня'
+            else:
+                day_word = 'дней'
+
+            await message.answer(f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
+
+    await state.set_state(BaseStates.show_trainings)
+
+    for i in range(len(data['workout']) - 1):
+        cur_segment = data['workout'][i].split('\n')[-1].split(' ')
+        cur_segment = [x for x in cur_segment if x]
+        name = ' '.join(cur_segment[:-2])
+        weight = cur_segment[-1]
+
+        await dal.Exercises.add_exercise(name)
+        await dal.UserResults.update_user_results(
+            user_id=user_id,
+            name=name,
+            weight=weight
+        )
+
+    first_training = await dal.User.check_if_first_training_by_user_id(user_id)
+    if first_training:
+        await edit_message_text_def(text='🎉 Поздравляем вас с первым успешным занятием!',
+                                    chat_id=message.chat.id,
+                                    message_id=data['message']
+                                    )
+        await asyncio.sleep(1)
+
+    else:
+        await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',
+                                    chat_id=message.chat.id,
+                                    message_id=data['message']
+                                    )
+        await asyncio.sleep(1)
+
+    await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
+                         'обязательной частью программы, '
+                         'без которой вы не сможете добиться желаемого результата!')
+    await asyncio.sleep(1)
+
+    subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
+
+    await dal.Trainings.update_trainings(
+        user_id=user_id,
+        day=data['day'],
+        data=workout_in_process,
+        active=False
+    )
+    training, new_day, active = await dal.Trainings.get_next_training(
+        user_id=user_id,
+        current_day=data['day']
+    )
+    if training:
+        await dal.Trainings.update_active_training_by_day(
+            user_id=user_id,
+            day=new_day,
+            active=True
+        )
+        await end_not_last_workout()
+
+    else:
+        if not subscribed:
+            await message.answer('〰️ Чтобы продолжить заниматься  и достичь цели, вам необходимо '
+                                 'оплатить *подписку* или сразу купить *план на 9 недель:*\n\n\n'
+                                 '• 399 руб./ мес.\n\n'
+                                 '• 749 руб./ 9 недель (вместо 1197 руб.)',
+                                 parse_mode='Markdown')
+            await asyncio.sleep(2)
+
+            await message.answer(
+                'Функции:\n\n'
+                '📈 Прогрессивная программа тренировок на 9 недель, разработанная для вас, '
+                'учитывая ваши желания\n\n\n'
+                '🍏 Изменяющийся план питания на протяжении всего периода тренировок\n\n\n'
+                '⚙️ Возможность менять и модифицировать тренировки и питание под себя\n\n\n'
+                '🎯 Наивысшая эффективность за счет индивидуального подхода\n\n\n'
+                '🛟 Поддержка на всём периоде занятий')
+            await asyncio.sleep(1)
+            await message.answer('Стоимость подписки 399 руб/мес.')
+            await asyncio.sleep(1)
+            await message.answer(
+                'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
+                reply_markup=kb.subscribe_proposition
+            )
+        else:
+            await state.set_state(BaseStates.end_of_week_changes)
+            temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
+                                                'напишите коррективы, которые вы бы хотели внести '
+                                                'в тренировки в целом '
+                                                '(до 100 символов)')
+            data['temp_message'] = temp_message.message_id
 
 
 async def get_training_markup(user_id, day, ):

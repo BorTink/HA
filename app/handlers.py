@@ -14,7 +14,7 @@ from loguru import logger
 
 import dal
 from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup, \
-    proccess_meal_plan_prompt
+    proccess_meal_plan_prompt, complete_training
 from app import keyboards as kb
 from gpt.chat import ChatGPT
 from .states import PersonChars, BaseStates, Admin
@@ -522,101 +522,128 @@ async def begin_workout(callback: types.CallbackQuery, state: FSMContext):
 
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='add_weight')
-async def add_weight(callback: types.CallbackQuery, state: FSMContext):
+async def add_weight_callback(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['message'] = callback.message.message_id
+        if 'weight_index' not in data.keys():
+            data['weight_index'] = 0
+        data['exercises'] = ' кг'.join(data['workout']).replace('\n\n', '\n').split('\n')
+        data['exercises'] = [line for line in data['exercises'] if len(line) > 5 and ' кг' in line]
+
+        data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
         temp_message = await callback.message.answer(
-            'Введите новый вес',
-            reply_markup=kb.insert_weight
+            data['new_text'],
+            reply_markup=kb.insert_weight,
+            parse_mode='HTML'
         )
         data['temp_message'] = temp_message.message_id
     await state.set_state(BaseStates.add_weight)
 
 
 @dp.message_handler(state=BaseStates.add_weight)
-async def add_weight(message: types.Message, state: FSMContext):
+async def add_weight_message(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['temp_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
+        message_text = data['new_text']
 
-            temp_message = await message.answer(
-                'Необходимо ввести численное значение',
-                reply_markup=kb.insert_weight)
-            data['temp_message'] = temp_message.message_id
+        if message.text.isdigit() is False:
+            await bot.edit_message_text(
+                message_text + '\n\n<b>Необходимо ввести численное значение</b>',
+                chat_id=message.chat.id,
+                message_id=data['temp_message'],
+                reply_markup=kb.insert_weight,
+                parse_mode='HTML'
+            )
+
+            await message.delete()
 
         elif int(message.text) > 300:
-            try:
-                await bot.delete_message(message.chat.id, data['temp_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
+            await bot.edit_message_text(
+                message_text + '\n\n<b>Похоже вы опечатались, введите значение повторно</b>',
+                chat_id=message.chat.id,
+                message_id=data['temp_message'],
+                reply_markup=kb.insert_weight,
+                parse_mode='HTML'
+            )
 
-            temp_message = await message.answer(
-                'Похоже вы опечатались, введите значение повторно',
-                reply_markup=kb.insert_weight)
-            data['temp_message'] = temp_message.message_id
+            await message.delete()
 
         else:
             await message.delete()
-            try:
-                await bot.delete_message(message.chat.id, data['temp_message'])
-            except Exception as exc:
-                pass
 
             workout_in_process = await split_workout(data['workout'], data['weight_index'], int(message.text))
             await process_workout(workout_in_process, data, state, message, kb)
 
+            if await state.get_state() != BaseStates.show_trainings:
+                data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+                temp_message = await bot.edit_message_text(
+                    data['new_text'],
+                    chat_id=message.chat.id,
+                    message_id=data['temp_message'],
+                    reply_markup=kb.insert_weight,
+                    parse_mode='HTML'
+                )
+                data['temp_message'] = temp_message.message_id
 
-@dp.callback_query_handler(state=BaseStates.start_workout, text='skip_weight')
-async def skip_weight(callback: types.CallbackQuery, state: FSMContext):
+
+@dp.callback_query_handler(state=BaseStates.add_weight, text='next_exercise')
+async def next_exercise(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        data['message'] = callback.message.message_id
+        print('next')
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
 
+        if await state.get_state() != BaseStates.show_trainings:
+            data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+            temp_message = await callback.message.edit_text(
+                data['new_text'],
+                reply_markup=kb.insert_weight,
+                parse_mode='HTML'
+            )
+            data['temp_message'] = temp_message.message_id
 
-@dp.callback_query_handler(state=BaseStates.start_workout, text='leave_workout')
+
+@dp.callback_query_handler(state=BaseStates.add_weight, text='prev_exercise')
+async def prev_exercise(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        print('prev')
+        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        data['weight_index'] -= 1
+        await process_workout(
+            workout_in_process,
+            data,
+            state,
+            callback.message,
+            kb,
+            user_id=callback.from_user.id,
+            return_to_training=True
+        )
+
+        if await state.get_state() != BaseStates.show_trainings:
+            data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+            temp_message = await callback.message.edit_text(
+                data['new_text'],
+                reply_markup=kb.insert_weight,
+                parse_mode='HTML'
+            )
+            data['temp_message'] = temp_message.message_id
+
+
+@dp.callback_query_handler(state=BaseStates.start_workout, text='complete_workout')
 async def ask_to_leave_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['message'] = callback.message.message_id
-    await callback.message.answer(f'Вы действительно хотите покинуть тренировку?', reply_markup=kb.leave_workout)
+    await callback.message.answer(f'Вы действительно хотите завершить тренировку?', reply_markup=kb.complete_workout)
 
 
 @dp.callback_query_handler(state=BaseStates.start_workout, text='yes')
-async def leave_workout(callback: types.CallbackQuery, state: FSMContext):
-    training, new_day, active = await dal.Trainings.get_trainings_by_day(
-        user_id=callback.from_user.id,
-        day=1
-    )
+async def complete_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        await dal.Trainings.update_in_progress_training_by_day(
-            user_id=callback.from_user.id,
-            day=data['day'],
-            in_progress=False
-        )
-        data['day'] = 1
-        data['workout'] = training
-
-        try:
-            await bot.delete_message(callback.message.chat.id, data['message'])
-        except Exception as exc:
-            pass
-        await callback.message.delete()
-
-    await callback.message.answer('Возвращаемся к тренировкам', reply_markup=kb.always_markup)
-    await asyncio.sleep(1.5)
-
-    await state.set_state(BaseStates.show_trainings)
-    await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
-        reply_markup=kb.trainings_tab,
-        parse_mode='HTML'
-    )
+        data['message'] = callback.message.message_id
+        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        await complete_training(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
 
 
 @dp.message_handler(state=BaseStates.end_of_week_changes)
