@@ -744,46 +744,64 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 
 @dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text='meal_plan')
 async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
-    meals = await dal.Meals.get_all_meals_by_user_id(callback.from_user.id)
     await state.set_state(BaseStates.meals)
+    async with state.proxy() as data:
+        try:
+            await bot.delete_message(callback.message.chat.id, data['temp_message'])
+        except:
+            pass
+
+    meals = await dal.Meals.get_all_meals_by_user_id(callback.from_user.id)
     if meals:
         meal_plan = meals[0].meal_plan
-        await callback.message.answer(
+        await callback.message.edit_text(
             meal_plan,
-            reply_markup=kb.meal_plan
+            reply_markup=kb.meal_plan,
+            parse_mode='HTML'
         )
     else:
-        await callback.message.answer(
+        await callback.message.edit_text(
             '⏳Ваш план питания составляется, подождите (не более 2х минут)…'
         )
 
         meal_plan = await proccess_meal_plan_prompt(callback.from_user.id)
 
-        await callback.message.answer(
+        await callback.message.edit_text(
             '🍏 Ваш план питания составлен! \n\n'
             'Старайтесь следовать инструкциям!'
         )
 
-        await callback.message.answer(
+        await callback.message.edit_text(
             meal_plan,
-            reply_markup=kb.meal_plan
+            reply_markup=kb.meal_plan,
+            parse_mode='HTML'
         )
 
 
 @dp.callback_query_handler(state=BaseStates.meals, text='go_to_workout')
 async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
+        await state.set_state(BaseStates.start_workout)
+
         data['message'] = callback.message.message_id
         data['workout'], data['day'] = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
         data['workout'] = data['workout'].split(' кг')
 
         if 'weight_index' not in data.keys():
             data['weight_index'] = 0
-        else:
-            data['weight_index'] -= 1
+
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
+
+        await process_workout(
+            workout_in_process,
+            data,
+            state,
+            callback.message,
+            kb,
+            user_id=callback.from_user.id,
+            return_to_training=True
+        )
 
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------

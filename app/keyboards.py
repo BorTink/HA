@@ -94,7 +94,7 @@ start_workout.add(start_workout_1).add(start_workout_2)
 
 insert_weights_in_workout = InlineKeyboardMarkup(resize_keyboard=True)
 insert_weights_in_workout_1 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
-insert_weights_in_workout_2 = InlineKeyboardButton('Завершить тренировку', callback_data='leave_workout')
+insert_weights_in_workout_2 = InlineKeyboardButton('Завершить тренировку', callback_data='complete_workout')
 insert_weights_in_workout_3 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')
 insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)
 insert_weights_in_workout.add(insert_weights_in_workout_3)
