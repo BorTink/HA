@@ -874,7 +874,7 @@ async def go_to_workout(callback: types.CallbackQuery):
 
 
 @dp.callback_query_handler(state=BaseStates.subscription_proposition,
-                           text=['trainings', 'trainings_and_food', 'trainings_and_food_9_weeks'])
+                           text=['trainings', 'trainings_and_food', 'trainings_and_food_9_weeks', 'skip_proposition'])
 async def go_to_workout(callback: types.CallbackQuery):
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         payload = 'test-invoice-payload'
