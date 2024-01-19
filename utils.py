@@ -19,8 +19,6 @@ async def process_prompt(user_id, client_changes=None):
     training = replace_nth_occ(training, '**', '</b>', 2)
     training = training.replace('**', '<b>')
     training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
-    training = training.split('<b>День')[1]
-    training = '<b>День' + training
     training = training.split('\n')
 
     day_number = 1
@@ -64,6 +62,9 @@ async def process_prompt(user_id, client_changes=None):
 
     final_training = '\n'.join(final_training)
 
+    final_training += ('🏁 Чтобы завершить тренировку, нажмите <b>ввести вес</b>, '
+                       'если вес не подошел, либо <b>завершить тренировку</b>.')
+
     await dal.Trainings.update_trainings(
         user_id=int(user_id),
         day=day_number,
@@ -104,63 +105,55 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None):
         else:
             trainings_prev_week += f'День {i} - {workout}'
 
-    trainings = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
-    await dal.Trainings.remove_prev_trainings(
-        user_id=int(user_id)
-    )
-    day_number = 1
-    for training in trainings:
-        if 'Отдых' in training:
-            day_number += 1
-        else:
-            cur_training = training.replace('"', '').replace("""'""", '')
-            cur_training = cur_training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение').split('\n')[1:]
+    training = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
 
-            final_training = []
-            for line in cur_training:
-                if len(line) < 5 or 'Разминка' in line:
-                    final_training.append(line)
-                    continue
+    training = training.replace('"', '').replace("""'""", '')
+    training = replace_nth_occ(training, '**', '</b>', 2)
+    training = training.replace('**', '<b>')
+    training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
+    training = training.split('\n')
 
-                exercise_name = line.split(' -')[0]
-                exercise_name_words = exercise_name.split()
-                similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
+    final_training = []
 
-                if similar_exercises:
-                    temp_exercises = []
+    for line in training:
+        if 'День' in line:
+            continue
+        if len(line) < 5 or 'Разминка' in line:
+            final_training.append(line)
+            continue
 
-                    for word in exercise_name_words:
-                        for exercise in similar_exercises:
-                            if word in exercise.name:
-                                temp_exercises.append(exercise)
+        exercise_name = line.split(' -')[0]
+        exercise_name_words = exercise_name.replace('-', '').split()
+        similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
 
-                        if not temp_exercises:
-                            break
+        if similar_exercises:
+            temp_exercises = []
 
-                        similar_exercises = temp_exercises
-                        temp_exercises = []
+            for word in exercise_name_words:
+                for exercise in similar_exercises:
+                    if word in exercise.name:
+                        temp_exercises.append(exercise)
 
-                    min_len_word = 100000
-                    final_exercise = None
-                    for exercise in similar_exercises:
-                        if len(exercise.name) < min_len_word:
-                            min_len_word = len(exercise.name)
-                            final_exercise = exercise
+                if not temp_exercises:
+                    break
 
-                    exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
+                similar_exercises = temp_exercises
+                temp_exercises = []
 
-                final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
+            min_len_word = 100000
+            final_exercise = None
+            for exercise in similar_exercises:
+                if len(exercise.name) < min_len_word:
+                    min_len_word = len(exercise.name)
+                    final_exercise = exercise
 
-            final_training = '\n'.join(final_training)
+            exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
 
-            await dal.Trainings.update_trainings(
-                user_id=int(user_id),
-                day=day_number,
-                data=final_training
-            )
-            day_number += 1
+        final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
 
-    return trainings
+    final_training = '\n'.join(final_training)
+
+    return final_training
 
 
 async def split_workout(workout, weight_index, weight_value):
@@ -232,9 +225,15 @@ async def process_workout(
 
         first_training = await dal.User.check_if_first_training_by_user_id(user_id)
         if first_training:
-            await edit_message_text_def(text='🎉 Поздравляем вас с первым успешным занятием!',
+            await state.set_state(BaseStates.subscription_proposition)
+            await edit_message_text_def(text=
+                                        '🏆 Поздравляем с первой тренировкой! Первый шаг сделан.'
+                                        '— Далее вы можете <b>посмотреть</b> как будет <b>выглядеть</b> '
+                                        'одна из ваших <b>будущих тренировок</b> 7й - 9й недели.',
                                         chat_id=message.chat.id,
-                                        message_id=data['message']
+                                        message_id=data['message'],
+                                        parse_mode='HTML',
+                                        reply_markup=kb.first_training_proposition,
                                         )
             await asyncio.sleep(1)
 
@@ -245,62 +244,62 @@ async def process_workout(
                                         )
             await asyncio.sleep(1)
 
-        await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
-                             'обязательной частью программы, '
-                             'без которой вы не сможете добиться желаемого результата!')
-        await asyncio.sleep(1)
+            await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
+                                 'обязательной частью программы, '
+                                 'без которой вы не сможете добиться желаемого результата!')
+            await asyncio.sleep(1)
 
-        subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
+            subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
 
-        await dal.Trainings.update_trainings(
-            user_id=user_id,
-            day=data['day'],
-            data=workout_in_process,
-            active=False
-        )
-        training, new_day, active = await dal.Trainings.get_next_training(
-            user_id=user_id,
-            current_day=data['day']
-        )
-        if training:
-            await dal.Trainings.update_active_training_by_day(
+            await dal.Trainings.update_trainings(
                 user_id=user_id,
-                day=new_day,
-                active=True
+                day=data['day'],
+                data=workout_in_process,
+                active=False
             )
-            await end_not_last_workout()
-
-        else:
-            if not subscribed:
-                await message.answer('〰️ Чтобы продолжить заниматься  и достичь цели, вам необходимо '
-                                     'оплатить *подписку* или сразу купить *план на 9 недель:*\n\n\n'
-                                     '• 399 руб./ мес.\n\n'
-                                     '• 749 руб./ 9 недель (вместо 1197 руб.)',
-                                     parse_mode='Markdown')
-                await asyncio.sleep(2)
-
-                await message.answer(
-                    'Функции:\n\n'
-                    '📈 Прогрессивная программа тренировок на 9 недель, разработанная для вас, '
-                    'учитывая ваши желания\n\n\n'
-                    '🍏 Изменяющийся план питания на протяжении всего периода тренировок\n\n\n'
-                    '⚙️ Возможность менять и модифицировать тренировки и питание под себя\n\n\n'
-                    '🎯 Наивысшая эффективность за счет индивидуального подхода\n\n\n'
-                    '🛟 Поддержка на всём периоде занятий')
-                await asyncio.sleep(1)
-                await message.answer('Стоимость подписки 399 руб/мес.')
-                await asyncio.sleep(1)
-                await message.answer(
-                    'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
-                    reply_markup=kb.subscribe_proposition
+            training, new_day, active = await dal.Trainings.get_next_training(
+                user_id=user_id,
+                current_day=data['day']
+            )
+            if training:
+                await dal.Trainings.update_active_training_by_day(
+                    user_id=user_id,
+                    day=new_day,
+                    active=True
                 )
+                await end_not_last_workout()
+
             else:
-                await state.set_state(BaseStates.end_of_week_changes)
-                temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
-                                                    'напишите коррективы, которые вы бы хотели внести '
-                                                    'в тренировки в целом '
-                                                    '(до 100 символов)')
-                data['temp_message'] = temp_message.message_id
+                if not subscribed:
+                    await message.answer('〰️ Чтобы продолжить заниматься  и достичь цели, вам необходимо '
+                                         'оплатить *подписку* или сразу купить *план на 9 недель:*\n\n\n'
+                                         '• 399 руб./ мес.\n\n'
+                                         '• 749 руб./ 9 недель (вместо 1197 руб.)',
+                                         parse_mode='Markdown')
+                    await asyncio.sleep(2)
+
+                    await message.answer(
+                        'Функции:\n\n'
+                        '📈 Прогрессивная программа тренировок на 9 недель, разработанная для вас, '
+                        'учитывая ваши желания\n\n\n'
+                        '🍏 Изменяющийся план питания на протяжении всего периода тренировок\n\n\n'
+                        '⚙️ Возможность менять и модифицировать тренировки и питание под себя\n\n\n'
+                        '🎯 Наивысшая эффективность за счет индивидуального подхода\n\n\n'
+                        '🛟 Поддержка на всём периоде занятий')
+                    await asyncio.sleep(1)
+                    await message.answer('Стоимость подписки 399 руб/мес.')
+                    await asyncio.sleep(1)
+                    await message.answer(
+                        'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!',
+                        reply_markup=kb.subscribe_proposition
+                    )
+                else:
+                    await state.set_state(BaseStates.end_of_week_changes)
+                    temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
+                                                        'напишите коррективы, которые вы бы хотели внести '
+                                                        'в тренировки в целом '
+                                                        '(до 100 символов)')
+                    data['temp_message'] = temp_message.message_id
 
     else:
         if not return_to_training:

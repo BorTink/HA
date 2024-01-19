@@ -11,6 +11,21 @@ support_1 = InlineKeyboardButton('Техподдержка', callback_data='tech
 support_2 = InlineKeyboardButton('Оставить отзыв', callback_data='add_review')
 support.add(support_1).add(support_2)
 
+first_training_proposition = InlineKeyboardMarkup()
+first_training_proposition_1 = InlineKeyboardButton('🔎 Посмотреть', callback_data='watch_proposition')
+first_training_proposition_2 = InlineKeyboardButton('⏭ Пропустить и перейти далее', callback_data='skip_proposition')
+first_training_proposition.add(first_training_proposition_1).add(first_training_proposition_2)
+
+continue_keyboard = InlineKeyboardMarkup()
+continue_keyboard_1 = InlineKeyboardButton('➡️ Перейти далее', callback_data='continue')
+continue_keyboard.add(continue_keyboard_1)
+
+subscribe = InlineKeyboardMarkup()
+subscribe_1 = InlineKeyboardButton('99 руб./ мес.', callback_data='trainings')
+subscribe_2 = InlineKeyboardButton('199 руб./ мес.', callback_data='trainings_and_food')
+subscribe_3 = InlineKeyboardButton('399 руб./ 9 недель', callback_data='trainings_and_food_9_weeks')
+subscribe.add(subscribe_1).add(subscribe_2).add(subscribe_3)
+
 subscribe_proposition = InlineKeyboardMarkup()
 subscribe_proposition_1 = InlineKeyboardButton('✅ Оформить подписку', callback_data='get_subscription')
 subscribe_proposition_2 = InlineKeyboardButton('⏸ Вернуться позднее', callback_data='subscribe_later')

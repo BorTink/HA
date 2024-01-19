@@ -2,7 +2,6 @@ import asyncio
 import os
 import pathlib
 
-import tiktoken
 from aiogram import Dispatcher, types, Bot
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
@@ -834,6 +833,102 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
         )
 
 
+@dp.callback_query_handler(state=BaseStates.subscription_proposition, text='watch_proposition')
+async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer('⏳ Подождите около 2-х минут, ии-тренер составляет вам персональную тренировку.')
+
+    attempts = 0
+    training = None
+    while attempts < 3:
+        try:
+            training = await process_prompt_next_week(
+                user_id=callback.from_user.id
+            )
+            break
+        except Exception as exc:
+            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+            attempts += 1
+
+    if training is None:
+        await callback.message.answer(f'При создании тренировки произошла ошибка')
+    else:
+        await callback.message.answer(training, reply_markup=kb.continue_keyboard, parse_mode='HTML')
+
+
+@dp.callback_query_handler(state=BaseStates.subscription_proposition, text='continue')
+async def go_to_workout(callback: types.CallbackQuery):
+    await callback.message.answer(
+        '〰️ Чтобы продолжить заниматься  и достичь цели '
+        'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n\n'
+        '• 99 руб./ мес. (Тренировки)\n\n'
+        '• 199 руб./ мес. (Тренировки+питание)\n\n'
+        '• 399 руб./ 9 недель (вместо 507 руб.)~ с питанием\n\n\n\n'
+        'Функции:\n\n'
+        '📈 Прогрессивная программа тренировок, на 9 недель разработанная для вас, учитывая ваши желания\n\n\n'
+        '🍏 Изменяющийся план питания на протяжении всего периода тренировок\n\n\n'
+        '⚙️ Возможность менять и модифицировать тренировки и питание под себя\n\n\n'
+        '🎯 Наивысшая эффективность за счет индивидуального подхода\n\n\n'
+        '🛟 Поддержка на всём периоде занятий',
+        reply_markup=kb.subscribe
+    )
+
+
+@dp.callback_query_handler(state=BaseStates.subscription_proposition,
+                           text=['trainings', 'trainings_and_food', 'trainings_and_food_9_weeks'])
+async def go_to_workout(callback: types.CallbackQuery):
+    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
+        payload = 'test-invoice-payload'
+    else:
+        payload = 'subscription-payload'
+
+    if callback.data == 'trainings':
+        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки)', amount=99 * 100)
+        amount = {
+            'value': '99.00',
+            'currency': 'RUB'
+        }
+        description = 'Подписка на 1 месяц (Тренировки)'
+    elif callback.data == 'trainings_and_food':
+        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки+питание)', amount=199 * 100)
+        amount = {
+            'value': '199.00',
+            'currency': 'RUB'
+        }
+        description = 'Подписка на 1 месяц (Тренировки+питание)'
+    else: # callback.data == 'trainings_and_food_9_weeks':
+        NEW_PRICE = types.LabeledPrice(label='Покупка курса на 9 недель', amount=399 * 100)
+        amount = {
+            'value': '399.00',
+            'currency': 'RUB'
+        }
+        description = 'Покупка курса на 9 недель'
+
+    await bot.send_invoice(callback.message.chat.id,
+                           title=description,
+                           description=description,
+                           provider_token=os.getenv('PAYMENTS_TOKEN'),
+                           provider_data={
+                               "receipt": {
+                                   "items": [
+                                       {
+                                           "description": "Месячная подписка на сервис HealthAI",
+                                           "quantity": "1",
+                                           "amount": amount,
+                                           "vat_code": 1
+                                       }
+                                   ],
+                                   "customer": {"email": "borisus.amusov@mail.ru"}
+                               }
+                           },
+                           currency='rub',
+                           photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
+                           photo_width=1270,
+                           is_flexible=False,
+                           prices=[NEW_PRICE],
+                           start_parameter='one-month-subscription',
+                           payload=payload)
+
+
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
 
@@ -842,7 +937,7 @@ async def create_edit(callback: types.CallbackQuery):
     await asyncio.sleep(1.5)
     await callback.message.answer(
         '🏃🏽 Пробный период начался!\n'
-        '*Сейчас вам доступно:*\n'
+        '*Сейчас вам доступно:*\n\n'
         '• 1 тренировка с возможностью пересборки на ваших комментариях (если вам что-то не понравится);\n\n'
         '• Внесение своих показателей тренировки и просмотр тренировки 7-й недели;\n\n'
         '• Просмотр вашей персональной траектории развития на 9 недель;\n\n'
@@ -1185,7 +1280,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         '<i>(вы можете ее пересобрать при необходимости)</i>\n\n\n'
         '💡Если нажать на выделенные слова, вы перийдете на сайт с инструкцией к упражнению;\n\n\n'
         '• <b>Введите</b> подходящий <b>вес</b>, нажав кнопку «ввести вес», '
-        'для каждого упражнения, чтобы улучшить тренировки;\n\n\n'    
+        '(По порядку будут выделяться веса упражнений [ ], измените вес, который вам не подошел);\n\n\n'    
         '🚀 Удачной тренировки, вы достигните своих целей!\n',
         parse_mode='HTML'
     )

@@ -138,10 +138,16 @@ async def fill_prompt_next_week(prompt_data: schemas.PromptData, trainings_prev_
         prompt_text = await fill_woman_prompt_next_week(
             trainings_prev_week, client_edits_next_week
         )
+        if 'workout_gpt' not in locals():
+            workout_gpt = ChatGPT(os.getenv('WOMAN_ASSISTANT_ID'))
+            await workout_gpt.create_thread()
     else:
         prompt_text = await fill_man_prompt_next_week(
             trainings_prev_week, client_edits_next_week
         )
+        if 'workout_gpt' not in locals():
+            workout_gpt = ChatGPT(os.getenv('MAN_ASSISTANT_ID'))
+            await workout_gpt.create_thread()
 
     await workout_gpt.add_message(prompt_text)
 

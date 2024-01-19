@@ -35,6 +35,7 @@ class BaseStates(StatesGroup):
     add_review = State()
     end_of_week_changes = State()
     end_of_trial = State()
+    subscription_proposition = State()
 
 
 class Admin(StatesGroup):
