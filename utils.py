@@ -225,7 +225,8 @@ async def process_workout(
                     weight=weight
                 )
 
-        first_training = await dal.User.check_if_first_training_by_user_id(user_id)
+        # first_training = await dal.User.check_if_first_training_by_user_id(user_id)
+        first_training = True
         if first_training:
             await state.set_state(BaseStates.subscription_proposition)
             await edit_message_text_def(text=
