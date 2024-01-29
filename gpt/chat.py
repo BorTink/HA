@@ -130,7 +130,11 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
     messages = await workout_gpt.get_all_messages()
     training = messages.data[0].content[0].text.value
 
-    return training
+    training = training.split('\n----------\n')
+    program = training[0]
+    training = training[1]
+
+    return program, training
 
 
 async def fill_prompt_next_week(prompt_data: schemas.PromptData, trainings_prev_week, client_edits_next_week=None):

@@ -53,7 +53,7 @@ async def start(message: types.Message, state: FSMContext):
             await message.answer(
                 '👋 Добро пожаловать\n'
                 'Я — виртуальный тренер Health AI.\n\n'
-                '🎯 <b>Составлю</b> вам индивидуальный и наиболее эффективный для вас <b>план тренировок '
+                '🎯 <b>Составлю</b> индивидуальный и наиболее эффективный для вас <b>план тренировок '
                 'и питания</b> с траекторией развития на 9 недель;\n\n'
                 '<i>Приступая к тренировкам, вы подтверждаете, что ознакомились с информацией на '
                 '<a href="https://health-ai.ru/ai">нашем сайте</a>.</i>',
@@ -600,7 +600,15 @@ async def next_exercise(callback: types.CallbackQuery, state: FSMContext):
         print('next')
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        await process_workout(workout_in_process, data, state, callback.message, kb, user_id=callback.from_user.id)
+        await process_workout(
+            workout_in_process,
+            data,
+            state,
+            callback.message,
+            kb,
+            user_id=callback.from_user.id,
+            skip_db=True
+        )
 
         if await state.get_state() != BaseStates.show_trainings:
             data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
@@ -626,7 +634,8 @@ async def prev_exercise(callback: types.CallbackQuery, state: FSMContext):
             callback.message,
             kb,
             user_id=callback.from_user.id,
-            return_to_training=True
+            return_to_training=True,
+            skip_db=True
         )
 
         if await state.get_state() != BaseStates.show_trainings:
@@ -836,7 +845,8 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
             callback.message,
             kb,
             user_id=callback.from_user.id,
-            return_to_training=True
+            return_to_training=True,
+            skip_db=True
         )
 
 
@@ -943,12 +953,12 @@ async def go_to_workout(callback: types.CallbackQuery):
 async def create_edit(callback: types.CallbackQuery):
     await asyncio.sleep(1.5)
     await callback.message.answer(
-        '🏃🏽 Пробный период начался!\n'
+        '🏃🏽 Пробный период начался!\n\n'
         '*Сейчас вам доступно:*\n\n'
-        '• 1 тренировка с возможностью пересборки на ваших комментариях (если вам что-то не понравится);\n\n'
-        '• Внесение своих показателей тренировки и просмотр тренировки 7-й недели;\n\n'
-        '• Просмотр вашей персональной траектории развития на 9 недель;\n\n'
-        '• План питания на день в соответствии с вашими целями',
+        '• *1 тренировка* с возможностью *пересборки* на ваших комментариях (если вам что-то не понравится);\n\n'
+        '• Внесение *своих показателей и комментариев* по упражнениям и *просмотр тренировки 7-й* недели;\n\n'
+        '• Просмотр *вашей персональной траектории развития* на 9 недель;\n\n'
+        '• *План питания на день* в соответствии с *вашими целями*',
         parse_mode='Markdown'
     )
     await asyncio.sleep(1.5)
@@ -1255,11 +1265,14 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
 
     attempts = 0
+    program = None
     while attempts < 3:
         try:
-            await process_prompt(
+            program, final_training = await process_prompt(
                 user_id=callback.from_user.id
             )
+            if 'ПМ' in final_training or '%' in final_training:
+                raise Exception
             break
         except Exception as exc:
             logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
@@ -1282,36 +1295,50 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         data['weight_index'] = 0
         data['workout'] = training.split(' кг')
 
-    await callback.message.answer(
-        '✅ <b>Ваша первая тренировка составлена!</b>\n'
-        '<i>(вы можете ее пересобрать при необходимости)</i>\n\n\n'
-        '💡Если нажать на выделенные слова, вы перийдете на сайт с инструкцией к упражнению;\n\n\n'
-        '• <b>Введите</b> подходящий <b>вес</b>, нажав кнопку «ввести вес», '
-        '(По порядку будут выделяться веса упражнений [ ], измените вес, который вам не подошел);\n\n\n'
-        '🚀 Удачной тренировки, вы достигните своих целей!\n',
-        parse_mode='HTML'
-    )
-    await asyncio.sleep(3)
-    await callback.message.answer(
-        '🏁 Чтобы завершить тренировку, нажмите *ввести вес*, если вес не подошел, либо *завершить тренировку*.',
-        reply_markup=kb.always_markup,
-        parse_mode='Markdown'
-    )
-    await asyncio.sleep(2)
+        answer_text = '✅ <b>Ваша первая тренировка составлена!</b>\n'
+        answer_text += '<i>(вы можете ее пересобрать при необходимости)</i>\n\n'
+        answer_text += 'Ниже вам представлена ваша стратегия тренировок на 9 недель:\n\n'
+        answer_text += f'{program}'
 
-    await dal.Trainings.update_in_progress_training_by_day(
-        user_id=callback.from_user.id,
-        day=data['day'],
-        in_progress=True
-    )
+        await callback.message.answer(
+            answer_text,
+            reply_markup=kb.show_program,
+            parse_mode='HTML'
+        )
 
-    current_weight = data['workout'][0].split(' ')[-1]
-    workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-    await callback.message.answer(
-        f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + workout_in_process,
-        reply_markup=kb.insert_weights_in_workout,
-        parse_mode='HTML'
-    )
+
+@dp.callback_query_handler(state=BaseStates.start_workout, text='continue')
+async def after_program(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        await callback.message.answer(
+            'Cейчас вы получите вашу первую персональную тренировку, которую сможете выполнить!\n\n'
+            '💡Если нажать на выделенные слова, вы перейдете на сайт с инструкцией к упражнению;\n\n\n'
+            '• <b>Введите</b> подходящий <b>вес</b>, нажав кнопку «ввести вес», '
+            '(По порядку будут выделяться веса упражнений [ ], измените вес, который вам не подошел);\n\n\n'
+            '🚀 Удачной тренировки, вы достигните своих целей!\n',
+            parse_mode='HTML'
+        )
+        await asyncio.sleep(3)
+        await callback.message.answer(
+            '\n🏁 Чтобы завершить тренировку, нажмите *ввести вес*, если вес не подошел, либо *завершить тренировку*.',
+            reply_markup=kb.always_markup,
+            parse_mode='Markdown'
+        )
+        await asyncio.sleep(2)
+
+        await dal.Trainings.update_in_progress_training_by_day(
+            user_id=callback.from_user.id,
+            day=data['day'],
+            in_progress=True
+        )
+
+        current_weight = data['workout'][0].split(' ')[-1]
+        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+        await callback.message.answer(
+            f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + workout_in_process,
+            reply_markup=kb.insert_weights_in_workout,
+            parse_mode='HTML'
+        )
 
 # ----- ОБЫЧНЫЙ ChatGPT ---------
 

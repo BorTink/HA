@@ -11,7 +11,7 @@ async def process_prompt(user_id, client_changes=None):
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
 
-    training = await fill_prompt(data, client_changes)
+    program, training = await fill_prompt(data, client_changes)
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
@@ -71,7 +71,7 @@ async def process_prompt(user_id, client_changes=None):
         data=final_training
     )
 
-    return final_training
+    return program, final_training
 
 
 async def proccess_meal_plan_prompt(user_id):
@@ -118,7 +118,7 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None):
     for line in training:
         if 'День' in line:
             continue
-        if len(line) < 5 or 'Разминка' in line:
+        if len(line) < 45 or 'Разминка' in line:
             final_training.append(line)
             continue
 
@@ -175,7 +175,8 @@ async def process_workout(
         message,
         kb,
         user_id=None,
-        return_to_training=False
+        return_to_training=False,
+        skip_db=False
 ):
     from app.handlers import bot
 
@@ -216,12 +217,13 @@ async def process_workout(
             name = ' '.join(cur_segment[:-2])
             weight = cur_segment[-1]
 
-            await dal.Exercises.add_exercise(name)
-            await dal.UserResults.update_user_results(
-                user_id=user_id,
-                name=name,
-                weight=weight
-            )
+            if not skip_db:
+                await dal.Exercises.add_exercise(name)
+                await dal.UserResults.update_user_results(
+                    user_id=user_id,
+                    name=name,
+                    weight=weight
+                )
 
         first_training = await dal.User.check_if_first_training_by_user_id(user_id)
         if first_training:
