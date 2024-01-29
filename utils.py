@@ -62,9 +62,6 @@ async def process_prompt(user_id, client_changes=None):
 
     final_training = '\n'.join(final_training)
 
-    final_training += ('🏁 Чтобы завершить тренировку, нажмите <b>ввести вес</b>, '
-                       'если вес не подошел, либо <b>завершить тренировку</b>.')
-
     await dal.Trainings.update_trainings(
         user_id=int(user_id),
         day=day_number,
@@ -307,8 +304,6 @@ async def process_workout(
             data['weight_index'] += 1
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
-        cur_state = await state.get_state()
-        print(cur_state)
         await edit_message_text_def(text=f'<b>День {data["day"]}</b>\n' +
                                          f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' +
                                          workout_in_process,
@@ -350,6 +345,9 @@ async def complete_training(
     await state.set_state(BaseStates.show_trainings)
 
     for i in range(len(data['workout']) - 1):
+        workout_in_process = workout_in_process.replace('<b>[ ', '').replace(' ]</b>', '')
+        data['workout'] = workout_in_process.split(' кг')
+
         cur_segment = data['workout'][i].split('\n')[-1].split(' ')
         cur_segment = [x for x in cur_segment if x]
         name = ' '.join(cur_segment[:-2])
@@ -362,13 +360,21 @@ async def complete_training(
             weight=weight
         )
 
-    first_training = await dal.User.check_if_first_training_by_user_id(user_id)
+    # first_training = await dal.User.check_if_first_training_by_user_id(user_id)
+    first_training = True
     if first_training:
-        await edit_message_text_def(text='🎉 Поздравляем вас с первым успешным занятием!',
+        await state.set_state(BaseStates.subscription_proposition)
+        await edit_message_text_def(text=
+                                    '🏆 Поздравляем с первой тренировкой! Первый шаг сделан.'
+                                    '— Далее вы можете <b>посмотреть</b> как будет <b>выглядеть</b> '
+                                    'одна из ваших <b>будущих тренировок</b> 7й - 9й недели.',
                                     chat_id=message.chat.id,
-                                    message_id=data['message']
+                                    message_id=data['message'],
+                                    parse_mode='HTML',
+                                    reply_markup=kb.first_training_proposition,
                                     )
         await asyncio.sleep(1)
+        return None
 
     else:
         await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',

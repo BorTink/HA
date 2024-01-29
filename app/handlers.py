@@ -597,7 +597,6 @@ async def add_weight_message(message: types.Message, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.add_weight, text='next_exercise')
 async def next_exercise(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        print('next')
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         await process_workout(
@@ -611,19 +610,22 @@ async def next_exercise(callback: types.CallbackQuery, state: FSMContext):
         )
 
         if await state.get_state() != BaseStates.show_trainings:
-            data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
-            temp_message = await callback.message.edit_text(
-                data['new_text'],
-                reply_markup=kb.insert_weight,
-                parse_mode='HTML'
-            )
-            data['temp_message'] = temp_message.message_id
+            try:
+                data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+                temp_message = await callback.message.edit_text(
+                    data['new_text'],
+                    reply_markup=kb.insert_weight,
+                    parse_mode='HTML'
+                )
+                data['temp_message'] = temp_message.message_id
+            except Exception as exc:
+                logger.error(exc)
+                pass
 
 
 @dp.callback_query_handler(state=BaseStates.add_weight, text='prev_exercise')
 async def prev_exercise(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        print('prev')
         current_weight = data['workout'][data['weight_index']].split(' ')[-1]
         workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
         data['weight_index'] -= 1
@@ -963,11 +965,22 @@ async def create_edit(callback: types.CallbackQuery):
     )
     await asyncio.sleep(1.5)
     await callback.message.answer(
-        '💬 Осталось *ответить на вопросы* и ваш план тренировок будет готов!',
-        parse_mode='Markdown'
+        '💬 Осталось *ответить на вопросы* и ваш план тренировок будет готов!\n\n'
+        '(чтобы перепройти анкету, можете нажать "Вернуться в начало анкеты" в меню снизу)',
+        parse_mode='Markdown',
+        reply_markup=kb.user_info
     )
     await asyncio.sleep(1.5)
     await callback.message.answer(
+        'Укажите свой пол',
+        reply_markup=kb.gender
+    )
+    await PersonChars.gender.set()
+
+
+@dp.message_handler(state='*', text='Вернуться в начало анкеты')
+async def beginning_of_user_info(message: types.Message):
+    await message.answer(
         'Укажите свой пол',
         reply_markup=kb.gender
     )

@@ -6,6 +6,10 @@ always_markup_2 = KeyboardButton('Вернуться в главное меню'
 always_markup_3 = KeyboardButton('Техподдержка / Оставить отзыв')
 always_markup.add(always_markup_1).add(always_markup_2).add(always_markup_3)
 
+user_info = ReplyKeyboardMarkup(resize_keyboard=True)
+user_info_1 = KeyboardButton('Вернуться в начало анкеты')
+user_info.add(user_info_1)
+
 support = InlineKeyboardMarkup(resize_keyboard=True)
 support_1 = InlineKeyboardButton('Техподдержка', callback_data='tech_support')
 support_2 = InlineKeyboardButton('Оставить отзыв', callback_data='add_review')
