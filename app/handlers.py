@@ -37,29 +37,29 @@ async def start(message: types.Message, state: FSMContext):
     await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
-    trainings, day, active = await dal.Trainings.get_trainings_by_day(message.from_user.id, 1)
+    trainings, day = await dal.Trainings.get_active_training_by_user_id(message.from_user.id)
     logger.info(f'user - {user}')
-    async with state.proxy() as data:
-        if user and trainings:
-            if message.from_user.id in [635237071, 284863184]:
-                await message.answer('ЭТО АДМИН ПАНЕЛЬ', reply_markup=kb.always_markup)
-                await message.answer('Выберите действие',
-                                     reply_markup=kb.main_admin)
-            else:
-                await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
-                await message.answer('Выберите действие',
-                                     reply_markup=kb.main)
+
+    if user and trainings:
+        if message.from_user.id in [635237071, 284863184]:
+            await message.answer('ЭТО АДМИН ПАНЕЛЬ', reply_markup=kb.always_markup)
+            await message.answer('Выберите действие',
+                                 reply_markup=kb.main_admin)
         else:
-            await message.answer(
-                '👋 Добро пожаловать\n'
-                'Я — виртуальный тренер Health AI.\n\n'
-                '🎯 <b>Составлю</b> индивидуальный и наиболее эффективный для вас <b>план тренировок '
-                'и питания</b> с траекторией развития на 9 недель;\n\n'
-                '<i>Приступая к тренировкам, вы подтверждаете, что ознакомились с информацией на '
-                '<a href="https://health-ai.ru/ai">нашем сайте</a>.</i>',
-                reply_markup=kb.main_new,
-                parse_mode='HTML'
-            )
+            await message.answer('Здравствуйте!', reply_markup=kb.always_markup)
+            await message.answer('Выберите действие',
+                                 reply_markup=kb.main)
+    else:
+        await message.answer(
+            '👋 Добро пожаловать\n'
+            'Я — виртуальный тренер Health AI.\n\n'
+            '🎯 <b>Составлю</b> индивидуальный и наиболее эффективный для вас <b>план тренировок '
+            'и питания</b> с траекторией развития на 9 недель;\n\n'
+            '<i>Приступая к тренировкам, вы подтверждаете, что ознакомились с информацией на '
+            '<a href="https://health-ai.ru/ai">нашем сайте</a>.</i>',
+            reply_markup=kb.main_new,
+            parse_mode='HTML'
+        )
 
 
 @dp.callback_query_handler(state='*', text='ADMIN_go_to_assistant_testing')
@@ -144,6 +144,7 @@ async def successful_payment(message: types.Message, state: FSMContext):
             '✳️ Настало время изменений\n'
             '~ Возвращайтесь, когда наступит время вашей тренировки!'
         )
+        await dal.User.update_subscribed_parameter(message.from_user.id, 1)
 
     elif await state.get_state() == SubStates.trainings_and_food_9_weeks:
         logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно - разово 9 недель')
@@ -157,9 +158,7 @@ async def successful_payment(message: types.Message, state: FSMContext):
             '✳️ Настало время изменений\n'
             '~ Возвращайтесь, когда наступит время вашей тренировки!'
         )
-
-    await dal.User.update_subscribed_parameter(message.from_user.id, 1)
-    await message.answer(f'Спасибо за покупку подписки!')
+        await dal.User.update_subscribed_parameter(message.from_user.id, 2)
 
     await state.set_state(BaseStates.end_of_week_changes)
     temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
@@ -229,7 +228,7 @@ async def write_review(message: types.Message, state: FSMContext):
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.start_workout)
     training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
-    subscribed = await dal.User.check_if_subscribed_by_user_id(callback.from_user.id)
+    subscribed = await dal.User.check_sub_type_by_user_id(callback.from_user.id)
 
     if training:
         async with state.proxy() as data:
@@ -369,7 +368,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
     await state.set_state(BaseStates.show_trainings)
 
-    await dal.User.update_rebuilt_parameter(message.from_user.id)
+    await dal.User.increase_rebuilt_param(message.from_user.id)
 
     attempts = 0
     while attempts < 3:
@@ -398,7 +397,7 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         data['workout'] = training
 
     await message.answer(
-        '💡Если нажать на выделенные слова, вы перийдете на сайт с инструкцией к упражнению'
+        '💡Если нажать на выделенные слова, вы перейдете на сайт с инструкцией к упражнению'
     )
 
     await message.answer(
@@ -619,6 +618,9 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
             data['temp_message'] = temp_message.message_id
         else:
             await message.answer('⏳Ваши правки будут учтены, создаются тренировки на следующую неделю')
+
+            await dal.User.increase_week_parameter(message.from_user.id)
+
             attempts = 0
             while attempts < 3:
                 try:
@@ -629,8 +631,6 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
                 except Exception as exc:
                     logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
                     attempts += 1
-
-            await dal.User.increase_week_parameter(message.from_user.id)
 
             await dal.Trainings.update_active_training_by_day(
                 user_id=message.from_user.id,
@@ -805,7 +805,8 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
     while attempts < 3:
         try:
             training = await process_prompt_next_week(
-                user_id=callback.from_user.id
+                user_id=callback.from_user.id,
+                demo=True
             )
             break
         except Exception as exc:

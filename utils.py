@@ -1,7 +1,7 @@
 from loguru import logger
 import asyncio
 
-from gpt.chat import fill_prompt, fill_prompt_next_week, fill_meal_plan_prompt
+from gpt.chat import fill_prompt, fill_prompt_next_week, fill_meal_plan_prompt, fill_prompt_demo
 from app.states import BaseStates
 import app.keyboards as kb
 import dal
@@ -89,7 +89,56 @@ async def proccess_meal_plan_prompt(user_id):
     return meal_plan
 
 
-async def process_prompt_next_week(user_id, client_edits_next_week=None):
+async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=None):
+    async def analyse_training(training):
+        training = training.replace('"', '').replace("""'""", '')
+        training = replace_nth_occ(training, '**', '</b>', 2)
+        training = training.replace('**', '<b>')
+        training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
+        training = training.split('\n')
+
+        final_training = []
+
+        for line in training:
+            if 'День' in line:
+                continue
+            if len(line) < 45 or 'Разминка' in line:
+                final_training.append(line)
+                continue
+
+            exercise_name = line.split(' -')[0]
+            exercise_name_words = exercise_name.replace('-', '').split()
+            similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
+
+            if similar_exercises:
+                temp_exercises = []
+
+                for word in exercise_name_words:
+                    for exercise in similar_exercises:
+                        if word in exercise.name:
+                            temp_exercises.append(exercise)
+
+                    if not temp_exercises:
+                        break
+
+                    similar_exercises = temp_exercises
+                    temp_exercises = []
+
+                min_len_word = 100000
+                final_exercise = None
+                for exercise in similar_exercises:
+                    if len(exercise.name) < min_len_word:
+                        min_len_word = len(exercise.name)
+                        final_exercise = exercise
+
+                exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
+
+            final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
+
+        final_training = '\n'.join(final_training)
+
+        return final_training
+
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
     trainings_prev_week = ''
@@ -97,60 +146,37 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None):
         if trainings_prev_week != '':
             trainings_prev_week += '\n\n'
         workout, _, _ = await dal.Trainings.get_trainings_by_day(user_id, i)
-        if workout is None:
+        if workout is None and trainings_prev_week != '':
             trainings_prev_week += f'День {i} - Отдых'
         else:
             trainings_prev_week += f'День {i} - {workout}'
 
-    training = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
+    if demo:
+        training = await fill_prompt_demo(data, trainings_prev_week, client_edits_next_week)
+        final_training = await analyse_training(training)
 
-    training = training.replace('"', '').replace("""'""", '')
-    training = replace_nth_occ(training, '**', '</b>', 2)
-    training = training.replace('**', '<b>')
-    training = training.replace('Подъемы', 'Подъем').replace('Разводка', 'Разведение')
-    training = training.split('\n')
+        return final_training
 
-    final_training = []
+    else:
+        trainings = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
+        await dal.Trainings.remove_prev_trainings(
+            user_id=int(user_id)
+        )
+        day_number = 1
+        for training in trainings:
+            if 'Отдых' in training:
+                day_number += 1
+            else:
+                final_training = await analyse_training(training)
 
-    for line in training:
-        if 'День' in line:
-            continue
-        if len(line) < 45 or 'Разминка' in line:
-            final_training.append(line)
-            continue
+                await dal.Trainings.update_trainings(
+                    user_id=int(user_id),
+                    day=day_number,
+                    data=final_training
+                )
+                day_number += 1
 
-        exercise_name = line.split(' -')[0]
-        exercise_name_words = exercise_name.replace('-', '').split()
-        similar_exercises = await dal.Exercises.get_all_similar_exercises_by_word(exercise_name_words.pop(0))
-
-        if similar_exercises:
-            temp_exercises = []
-
-            for word in exercise_name_words:
-                for exercise in similar_exercises:
-                    if word in exercise.name:
-                        temp_exercises.append(exercise)
-
-                if not temp_exercises:
-                    break
-
-                similar_exercises = temp_exercises
-                temp_exercises = []
-
-            min_len_word = 100000
-            final_exercise = None
-            for exercise in similar_exercises:
-                if len(exercise.name) < min_len_word:
-                    min_len_word = len(exercise.name)
-                    final_exercise = exercise
-
-            exercise_name = f'<a href="{final_exercise.link}">{exercise_name}</a>'
-
-        final_training.append(f'{exercise_name} -{" -".join(line.split(" -")[1:])}')
-
-    final_training = '\n'.join(final_training)
-
-    return final_training
+        return trainings
 
 
 async def split_workout(workout, weight_index, weight_value):
@@ -249,7 +275,7 @@ async def process_workout(
                                  'без которой вы не сможете добиться желаемого результата!')
             await asyncio.sleep(1)
 
-            subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
+            subscribed = await dal.User.check_sub_type_by_user_id(user_id)
 
             await dal.Trainings.update_trainings(
                 user_id=user_id,
@@ -394,7 +420,7 @@ async def complete_training(
                          'без которой вы не сможете добиться желаемого результата!')
     await asyncio.sleep(1)
 
-    subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
+    subscribed = await dal.User.check_sub_type_by_user_id(user_id)
 
     training, new_day, active = await dal.Trainings.get_next_training(
         user_id=user_id,

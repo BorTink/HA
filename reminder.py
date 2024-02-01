@@ -105,7 +105,7 @@ class Reminder:
             notification_text = ('‼️Добрый день! У вас есть 1 невосполненный пропуск. '
                                  'Выполните свою тренировку, чтобы продолжить заниматься в привычном режиме.')
             if (
-                    await dal.User.check_if_subscribed_by_user_id(training.user_id)
+                    await dal.User.check_sub_type_by_user_id(training.user_id)
                     or not
                     await dal.User.check_if_rebuilt_by_user_id(training.user_id)
             ):

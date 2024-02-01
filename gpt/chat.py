@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import pathlib
 
@@ -10,7 +11,10 @@ from dotenv import load_dotenv
 
 import schemas
 from gpt.prompts import fill_man_prompt, fill_woman_prompt, \
-    fill_woman_prompt_next_week, fill_man_prompt_next_week, fill_man_meal_plan_prompt, fill_woman_meal_plan_prompt
+    fill_prompt_end_of_trial,\
+    fill_man_prompt_demo, fill_woman_prompt_demo, \
+    fill_man_prompt_next_week, fill_woman_prompt_next_week, \
+    fill_man_meal_plan_prompt, fill_woman_meal_plan_prompt
 
 load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
 openai.api_key = os.getenv('GPT_API_TOKEN')
@@ -137,21 +141,28 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
     return program, training
 
 
-async def fill_prompt_next_week(prompt_data: schemas.PromptData, trainings_prev_week, client_edits_next_week=None):
+async def fill_prompt_demo(
+        prompt_data: schemas.PromptData,
+        trainings_prev_week,
+        client_edits_next_week=None
+):
     if prompt_data.gender == 'Женский':
-        prompt_text = await fill_woman_prompt_next_week(
+        prompt_text = await fill_woman_prompt_demo(
             trainings_prev_week, client_edits_next_week
         )
-        if 'workout_gpt' not in locals():
-            workout_gpt = ChatGPT(os.getenv('WOMAN_ASSISTANT_ID'))
-            await workout_gpt.create_thread()
+
+        assistant_id_tag = 'WOMAN_ASSISTANT_ID'
+
     else:
-        prompt_text = await fill_man_prompt_next_week(
+        prompt_text = await fill_man_prompt_demo(
             trainings_prev_week, client_edits_next_week
         )
-        if 'workout_gpt' not in locals():
-            workout_gpt = ChatGPT(os.getenv('MAN_ASSISTANT_ID'))
-            await workout_gpt.create_thread()
+
+        assistant_id_tag = 'MAN_ASSISTANT_ID'
+
+    if 'workout_gpt' not in locals():
+        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
+        await workout_gpt.create_thread()
 
     await workout_gpt.add_message(prompt_text)
 
@@ -165,6 +176,64 @@ async def fill_prompt_next_week(prompt_data: schemas.PromptData, trainings_prev_
     training = messages.data[0].content[0].text.value
 
     return training
+
+
+async def fill_prompt_next_week(
+        prompt_data: schemas.PromptData,
+        trainings_prev_week,
+        week,
+        client_edits_next_week=None
+):
+    if prompt_data.gender == 'Женский':
+        if week == 1:
+            prompt_text = await fill_prompt_end_of_trial()
+        else:
+            prompt_text = await fill_woman_prompt_next_week(
+                trainings_prev_week, week, client_edits_next_week
+            )
+
+        assistant_id_tag = 'WOMAN_ASSISTANT_ID'
+
+    else:
+        if week == 1:
+            prompt_text = await fill_prompt_end_of_trial()
+        else:
+            prompt_text = await fill_man_prompt_next_week(
+                trainings_prev_week, week, client_edits_next_week
+            )
+
+        assistant_id_tag = 'MAN_ASSISTANT_ID'
+
+    if 'workout_gpt' not in locals():
+        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
+        await workout_gpt.create_thread()
+
+    await workout_gpt.add_message(prompt_text)
+
+    status = await workout_gpt.create_run()
+
+    while status.status != 'completed':
+        status = await workout_gpt.get_run_status()
+        await asyncio.sleep(5)
+
+    messages = await workout_gpt.get_all_messages()
+    gpt_timetable = messages.data[0].content[0].text.value
+
+    timetable_days = gpt_timetable.split('День')
+    training_days = []
+    for i in range(len(timetable_days)):
+        logger.info(f'День {i + 1} - {timetable_days[i]}')
+        if len(timetable_days[i].split()) < 12:
+            if i == 0:
+                continue
+            training_days.append('Отдых\n\n')
+        else:
+            if i == len(timetable_days) - 1:
+                training_days.append('\n\n'.join(timetable_days[i].split('\n\n')[:-1]))
+            else:
+                training_days.append('\n\n'.join(timetable_days[i].split('\n\n')))
+
+    return training_days
 
 
 async def fill_meal_plan_prompt(prompt_data: schemas.PromptData):

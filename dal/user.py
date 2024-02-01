@@ -40,8 +40,13 @@ class User:
                     times_per_week INTEGER,
                     
                     rebuilt BOOLEAN DEFAULT 0 CHECK (rebuilt IN (0, 1)),
-                    subscribed BOOLEAN DEFAULT 0 CHECK (subscribed IN (0, 1)),
-                    first_training BOOLEAN DEFAULT 1 CHECK (first_training IN (0, 1))
+                    subscription_type INTEGER DEFAULT 0,
+                    subscribed_date TIMESTAMP,
+                    
+                    week INTEGER DEFAULT 0,
+                    weeks_left INTEGER DEFAULT 0,
+                    
+                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                     """)
 
@@ -96,7 +101,6 @@ class User:
                     health_restrictions,
                     allergy,
                     times_per_week
-                    
                     )
                     VALUES
                     (
@@ -138,53 +142,9 @@ class User:
         return user_info
 
     @classmethod
-    async def update_rebuilt_parameter(cls, user_id):
+    async def check_sub_type_by_user_id(cls, user_id):
         await cur.execute(f"""
-                UPDATE users
-                SET rebuilt = 1
-                WHERE tg_id = {user_id}
-            """)
-        logger.info(f'Параметр rebuilt у пользователя с id = {user_id} изменен на 1')
-
-        await db.commit()
-
-    @classmethod
-    async def update_subscribed_parameter(cls, user_id, value):
-        await cur.execute(f"""
-                    UPDATE users
-                    SET subscribed = {value}
-                    WHERE tg_id = {user_id}
-                """)
-        logger.info(f'Параметр subscribed у пользователя с id = {user_id} изменен на {value}')
-
-        await db.commit()
-
-    @classmethod
-    async def update_first_training_parameter(cls, user_id):
-        await cur.execute(f"""
-                        UPDATE users
-                        SET first_training = 0
-                        WHERE tg_id = {user_id}
-                    """)
-        logger.info(f'Параметр first_training у пользователя с id = {user_id} изменен на 0')
-
-        await db.commit()
-
-    @classmethod
-    async def increase_week_parameter(cls, user_id):
-        await cur.execute(f"""
-                            UPDATE users
-                            SET week = week + 1
-                            WHERE tg_id = {user_id}
-                        """)
-        logger.info(f'Параметр week у пользователя с id = {user_id} увеличен на 1')
-
-        await db.commit()
-
-    @classmethod
-    async def check_if_subscribed_by_user_id(cls, user_id):
-        await cur.execute(f"""
-                SELECT subscribed
+                SELECT subscription_type
                 FROM users
                 WHERE tg_id = {user_id}
             """)
@@ -192,10 +152,10 @@ class User:
 
         if subscribed[0]:
             logger.debug(f'Пользователь {user_id} подписан')
-            return True
         else:
             logger.warning(f'Пользователь {user_id} не подписан')
-            return False
+
+        return subscribed[0]
 
     @classmethod
     async def check_if_rebuilt_by_user_id(cls, user_id):
@@ -213,15 +173,59 @@ class User:
             return False
 
     @classmethod
-    async def check_if_first_training_by_user_id(cls, user_id):
+    async def select_week(cls, user_id):
         await cur.execute(f"""
-            SELECT first_training
-            FROM users
-            WHERE tg_id = {user_id}
-            """)
-        first_training = await cur.fetchone()
+                    SELECT week
+                    FROM users
+                    WHERE tg_id = {user_id}
+                """)
+        week = await cur.fetchone()
 
-        if first_training[0]:
-            return True
-        else:
-            return False
+        return int(week[0])
+
+    @classmethod
+    async def increase_rebuilt_param(cls, user_id):
+        await cur.execute(f"""
+                UPDATE users
+                SET rebuilt = 1
+                WHERE tg_id = {user_id}
+            """)
+        logger.info(f'Параметр rebuilt у пользователя с id = {user_id} увеличен до 1')
+
+        await db.commit()
+
+    @classmethod
+    async def decrease_rebuilt_param(cls, user_id):
+        await cur.execute(f"""
+                UPDATE users
+                SET rebuilt = 0
+                WHERE tg_id = {user_id}
+            """)
+        logger.info(f'Параметр rebuilt у пользователя с id = {user_id} уменьшен до 1')
+
+        await db.commit()
+
+    @classmethod
+    async def update_subscribed_parameter(cls, user_id, value):
+        await cur.execute(f"""
+                    UPDATE users
+                    SET subscription_type = {value},
+                    subscribed_date = now(),
+                    weeks_left = {4 if value == 1 else 9 if value == 2 else 0}
+                    WHERE tg_id = {user_id}
+                """)
+        logger.info(f'Параметр subscription_type у пользователя с id = {user_id} изменен на {value}')
+
+        await db.commit()
+
+    @classmethod
+    async def increase_week_parameter(cls, user_id):
+        await cur.execute(f"""
+                            UPDATE users
+                            SET week = week + 1,
+                            weeks_left = weeks_left - 1
+                            WHERE tg_id = {user_id}
+                        """)
+        logger.info(f'Параметр week у пользователя с id = {user_id} увеличен на 1')
+
+        await db.commit()

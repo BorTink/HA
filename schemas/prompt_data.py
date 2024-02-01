@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, field_validator
@@ -23,7 +24,11 @@ class PromptData(BaseModel):
     times_per_week: int
 
     rebuilt: bool
-    subscribed: bool
+    subscription_type: int
+    subscribed_date: Optional[datetime]
+
+    week: int
+    weeks_left: int
 
     @field_validator('squats_results', 'bench_results', 'deadlift_results', mode='before')
     def validate_results(cls, value):

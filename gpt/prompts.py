@@ -98,7 +98,7 @@ Trainings per week - {prompt_data.times_per_week}\n
     return prompt_text
 
 
-async def fill_man_prompt_next_week(
+async def fill_man_prompt_demo(
         workout_plan, client_edits_next_week=None
 ):
     prompt_text = f"""
@@ -117,7 +117,7 @@ Don't include more than 6 exercises in one training.
     return prompt_text
 
 
-async def fill_woman_prompt_next_week(
+async def fill_woman_prompt_demo(
         workout_plan, client_edits_next_week=None
 ):
     prompt_text = f"""
@@ -125,6 +125,63 @@ I completed my 1st workout that you gave to me. My results: {workout_plan}, my c
 
 Give me demonstration of one training of 7-9 weeks. It should constist of different exersises, sets and drop sets.
 Don't write anything else except for the training. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
+
+Формат вывода тренировки:
+День 1:  (тип тренировки) | Неделя 1
+
+-  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+...
+"""
+    return prompt_text
+
+
+async def fill_prompt_end_of_trial():
+    prompt_text = f"""
+Напоминаю, что я выполнил первую тренировку и поделился результатами, 
+теперь тебе необходимо отправить мне оставшиеся тренировочные дни недели 1.
+Don't write anything else except for the trainings. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
+
+Формат вывода тренировки:
+День 1:  (тип тренировки) | Неделя 1
+
+-  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+...
+"""
+
+    return prompt_text
+
+
+async def fill_man_prompt_next_week(
+        workout_plan, week, client_edits_next_week=None
+):
+    prompt_text = f"""
+I completed my {week} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
+
+Give me trainings for next week, use my information, I have sent before.
+
+Don't write anything else except for the trainings. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
+
+Формат вывода тренировки:
+День 1:  (тип тренировки) | Неделя 1
+
+-  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+...
+"""
+    return prompt_text
+
+
+async def fill_woman_prompt_next_week(
+        workout_plan, week, client_edits_next_week=None
+):
+    prompt_text = f"""
+I completed my {week} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
+
+Give me trainings for next week, use my information, I have sent before.
+
+Don't write anything else except for the trainings. You must follow all instructions provided in my previous messages.
 Don't include more than 6 exercises in one training.
 
 Формат вывода тренировки:
@@ -161,9 +218,10 @@ A 1 week food plan is required.
 
 async def fill_woman_meal_plan_prompt(
         prompt_data: schemas.PromptData,
+        week=1
 ):
     prompt_text = f"""
-You made 9 week training plan, use next information to make nutrition plan for 1 week. 
+You made 9 week training plan, use next information to make nutrition plan for {week} week. 
 Gender - female, 
 Age - {prompt_data.age} years old,
 Height - {prompt_data.height} cm, 
