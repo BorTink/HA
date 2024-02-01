@@ -274,7 +274,6 @@ async def process_workout(
                     await state.set_state(BaseStates.subscription_proposition)
                     await message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
                                          'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
-                                         '• 99 руб./ мес. (Тренировки)\n\n'
                                          '• 199 руб./ мес. (Тренировки+питание)\n\n' 
                                          '• 399 руб./ 9 недель (<i>вместо <s>507</s> руб.)~ с питанием</i>\n\n\n',
                                          parse_mode='HTML')
@@ -360,6 +359,13 @@ async def complete_training(
             weight=weight
         )
 
+    await dal.Trainings.update_trainings(
+        user_id=user_id,
+        day=data['day'],
+        data=workout_in_process,
+        active=False
+    )
+
     # first_training = await dal.User.check_if_first_training_by_user_id(user_id)
     first_training = True
     if first_training:
@@ -390,12 +396,6 @@ async def complete_training(
 
     subscribed = await dal.User.check_if_subscribed_by_user_id(user_id)
 
-    await dal.Trainings.update_trainings(
-        user_id=user_id,
-        day=data['day'],
-        data=workout_in_process,
-        active=False
-    )
     training, new_day, active = await dal.Trainings.get_next_training(
         user_id=user_id,
         current_day=data['day']
@@ -413,7 +413,6 @@ async def complete_training(
             await state.set_state(BaseStates.subscription_proposition)
             await message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
                                  'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
-                                 '• 99 руб./ мес. (Тренировки)\n\n'
                                  '• 199 руб./ мес. (Тренировки+питание)\n\n'
                                  '• 399 руб./ 9 недель (<i>вместо <s>507</s> руб.)~ с питанием</i>\n\n\n',
                                  parse_mode='HTML')

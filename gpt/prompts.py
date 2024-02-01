@@ -11,6 +11,7 @@ Workouts should be built according to user's intensity and uploaded file "Intens
 Instead of writing "% от 1ПМ" or "% from 1 personal max" you must write the exact calculated weight as a number in every such exercise 
 except when only user's own weight is needed.
 Don't write【21†source】 or anything similar.
+Don't include more than 6 exercises in one training.
 If a person has high experience, the first weeks should be as hard as the others.
 You must only use exercises that are in the uploaded file named "available_exercises" and most of them should be "Базовое" or "Начинающий".
 Now, do not show any information except for your 9 week workout plan and the first training day.
@@ -60,6 +61,7 @@ Workouts should be built according to user's intensity and uploaded file "Intens
 Instead of writing "% от 1ПМ" or "% from 1 personal max" you must write the exact calculated weight as a number in every such exercise 
 except when only user's own weight is needed.
 Don't write【21†source】 or anything similar.
+Don't include more than 6 exercises in one training.
 If a person has high experience, the first weeks should be as hard as the others.
 You must only use exercises that are in the uploaded file named "available_exercises" and most of them should be "Базовое" or "Начинающий".
 Now, do not show any information except for your 9 week workout plan and the first training day.
@@ -104,6 +106,7 @@ I completed my 1st workout that you gave to me. My results: {workout_plan}, my c
 
 Give me demonstration of one training of 7-9 weeks. It should constist of different exersises, sets and drop sets.
 Don't write anything else except for the training. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
 
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
@@ -122,6 +125,7 @@ I completed my 1st workout that you gave to me. My results: {workout_plan}, my c
 
 Give me demonstration of one training of 7-9 weeks. It should constist of different exersises, sets and drop sets.
 Don't write anything else except for the training. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
 
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1

@@ -16,7 +16,7 @@ from utils import process_prompt, process_prompt_next_week, split_workout, proce
     proccess_meal_plan_prompt, complete_training
 from app import keyboards as kb
 from gpt.chat import ChatGPT
-from .states import PersonChars, BaseStates, Admin
+from .states import PersonChars, BaseStates, Admin, SubStates
 
 # ----- СТАРТ И ПОДПИСКА ---------
 
@@ -125,87 +125,6 @@ async def assistant_message(message: types.Message, state: FSMContext):
 #     )
 
 
-@dp.message_handler(state='*', text='Купить подписку')
-async def buy_subscription(message: types.Message, state: FSMContext):
-    with open(str(pathlib.Path(__file__).parent.parent) + '/img/logo.jpg', 'rb') as photo_file:
-        await bot.send_photo(chat_id=message.from_user.id, photo=photo_file)
-    await asyncio.sleep(1.5)
-    await message.answer(
-        '🌟 Если вы не хотите стоять на месте и для вас важен прогресс в тренировках, '
-        'рекомендуем оформить ежемесячную подписку!'
-    )
-    await asyncio.sleep(1.5)
-    await message.answer(
-        '📈 Так вы сможете соразмерно увеличивать нагрузки и менять программу занятий '
-        'для получения максимальной пользы.'
-    )
-    await asyncio.sleep(1.5)
-    await message.answer("Основные преимущества подписки:\n"
-                         "▫️Регулярное обновление программы тренировок;\n"
-                         "▫️Высокая персонализация (с опорой на ваши результаты);\n"
-                         "▫️Повышенная эффективность от тренировок;\n"
-                         "▫️Возможность обновлять свои данные;\n"
-                         "▫️Поддержка на всём периоде занятий")
-    await asyncio.sleep(1.5)
-    await message.answer('Стоимость подписки 399 руб/мес.')
-    await asyncio.sleep(1.5)
-    await message.answer(
-        'Оформляйте подписку на Health AI и меняйтесь к лучшему каждый день!'
-    )
-    await asyncio.sleep(2)
-
-    if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
-        await bot.send_invoice(message.chat.id,
-                               title='Месячная подписка на сервис HealthAI',
-                               description='Месячная подписка на сервис HealthAI',
-                               provider_token=os.getenv('PAYMENTS_TOKEN'),
-                               provider_data={
-                                   "receipt": {
-                                       "items": [
-                                           {
-                                               "description": "Месячная подписка на сервис HealthAI",
-                                               "quantity": "1",
-                                               "amount": {"value": "399.00", "currency": "RUB"},
-                                               "vat_code": 1
-                                           }
-                                       ],
-                                       "customer": {"email": "borisus.amusov@mail.ru"}
-                                   }
-                               },
-                               currency='rub',
-                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
-                               photo_width=1270,
-                               is_flexible=False,
-                               prices=[PRICE],
-                               start_parameter='one-month-subscription',
-                               payload='test-invoice-payload')
-    else:
-        await bot.send_invoice(message.chat.id,
-                               title='Месячная подписка на сервис HealthAI',
-                               description='Месячная подписка на сервис HealthAI',
-                               provider_token=os.getenv('PAYMENTS_TOKEN'),
-                               provider_data={
-                                   "receipt": {
-                                       "items": [
-                                           {
-                                               "description": "Месячная подписка на сервис HealthAI",
-                                               "quantity": "1",
-                                               "amount": {"value": "399.00", "currency": "RUB"},
-                                               "vat_code": 1
-                                           }
-                                       ],
-                                       "customer": {"email": "borisus.amusov@mail.ru"}
-                                   }
-                               },
-                               currency='rub',
-                               photo_url='/home/boris/TelegramBots/Health_AI/img/logo.jpg',
-                               photo_width=1270,
-                               is_flexible=False,
-                               prices=[PRICE],
-                               start_parameter='one-month-subscription',
-                               payload='subscription-payload')
-
-
 @dp.pre_checkout_query_handler(lambda query: True)
 async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
     await bot.answer_pre_checkout_query(pre_checkout_q.id, ok=True, error_message='Произошла ошибка')
@@ -213,7 +132,32 @@ async def pre_checkout_query(pre_checkout_q: types.PreCheckoutQuery):
 
 @dp.message_handler(content_types=ContentType.SUCCESSFUL_PAYMENT)
 async def successful_payment(message: types.Message, state: FSMContext):
-    logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно')
+    if await state.get_state() == SubStates.trainings_and_food:
+        logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно - подписка на 1 месяц')
+        await message.answer(
+            '⭐️ Вы приобрели подписку! ⭐\n\n'
+            'Теперь вам доступно:\n\n'
+            '• Тренировки и питание на 1 месяц\n\n'
+            '• Поддержка 24/7\n\n'
+            '• Возможность пересобрать тренировку 1 раз в неделю\n\n'
+            '• Повышенная эффективность и дисциплина\n\n\n'
+            '✳️ Настало время изменений\n'
+            '~ Возвращайтесь, когда наступит время вашей тренировки!'
+        )
+
+    elif await state.get_state() == SubStates.trainings_and_food_9_weeks:
+        logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно - разово 9 недель')
+        await message.answer(
+            '⭐️ Вы приобрели подписку! ⭐\n\n'
+            'Теперь вам доступно:\n\n'
+            '• Тренировки и питание на 9 недель\n\n'
+            '• Поддержка 24/7\n\n'
+            '• Возможность пересобрать тренировку 1 раз в неделю\n\n'
+            '• Повышенная эффективность и дисциплина\n\n\n'
+            '✳️ Настало время изменений\n'
+            '~ Возвращайтесь, когда наступит время вашей тренировки!'
+        )
+
     await dal.User.update_subscribed_parameter(message.from_user.id, 1)
     await message.answer(f'Спасибо за покупку подписки!')
 
@@ -306,7 +250,6 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         await asyncio.sleep(1.5)
         await callback.message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
                                       'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
-                                      '• 99 руб./ мес. (Тренировки)\n\n'
                                       '• 199 руб./ мес. (Тренировки+питание)\n\n'
                                       '• 399 руб./ 9 недель (<i>вместо <s>507</s> руб.)~ с питанием</i>\n\n\n',
                                       parse_mode='HTML')
@@ -854,6 +797,7 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.subscription_proposition, text='watch_proposition')
 async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
+    await state.set_state(SubStates.show_add_training)
     await callback.message.answer('⏳ Подождите около 2-х минут, ии-тренер составляет вам персональную тренировку.')
 
     attempts = 0
@@ -869,17 +813,21 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
             attempts += 1
 
     if training is None:
-        await callback.message.answer(f'При создании тренировки произошла ошибка')
+        await callback.message.answer(f'При создании тренировки произошла ошибка. '
+                                      f'Напишите */start* чтобы вернуться в меню.',
+                                      parse_mode='Markdown')
     else:
         await callback.message.answer(training, reply_markup=kb.continue_keyboard, parse_mode='HTML')
 
 
-@dp.callback_query_handler(state=BaseStates.subscription_proposition, text='continue')
-async def go_to_workout(callback: types.CallbackQuery):
+@dp.callback_query_handler(
+    state=[SubStates.show_add_training, BaseStates.subscription_proposition],
+    text=['continue', 'skip_proposition']
+)
+async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer(
         '〰️ Чтобы продолжить заниматься  и достичь цели '
         'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n\n'
-        '• 99 руб./ мес. (Тренировки)\n\n'
         '• 199 руб./ мес. (Тренировки+питание)\n\n'
         '• 399 руб./ 9 недель (вместо 507 руб.)~ с питанием\n\n\n\n'
         'Функции:\n\n'
@@ -892,22 +840,21 @@ async def go_to_workout(callback: types.CallbackQuery):
     )
 
 
-@dp.callback_query_handler(state=BaseStates.subscription_proposition,
-                           text=['trainings', 'trainings_and_food', 'trainings_and_food_9_weeks', 'skip_proposition'])
-async def go_to_workout(callback: types.CallbackQuery):
+@dp.callback_query_handler(
+    state=[SubStates.show_add_training,
+           BaseStates.subscription_proposition,
+           SubStates.trainings_and_food,
+           SubStates.trainings_and_food_9_weeks
+           ],
+    text=['trainings_and_food', 'trainings_and_food_9_weeks', 'skip_proposition'])
+async def subscribe(callback: types.CallbackQuery, state: FSMContext):
     if os.getenv('PAYMENTS_TOKEN').split(':')[1] == 'TEST':
         payload = 'test-invoice-payload'
     else:
         payload = 'subscription-payload'
 
-    if callback.data == 'trainings':
-        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки)', amount=99 * 100)
-        amount = {
-            'value': '99.00',
-            'currency': 'RUB'
-        }
-        description = 'Подписка на 1 месяц (Тренировки)'
-    elif callback.data == 'trainings_and_food':
+    if callback.data == 'trainings_and_food':
+        await state.set_state(SubStates.trainings_and_food)
         NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки+питание)', amount=199 * 100)
         amount = {
             'value': '199.00',
@@ -915,6 +862,7 @@ async def go_to_workout(callback: types.CallbackQuery):
         }
         description = 'Подписка на 1 месяц (Тренировки+питание)'
     else:  # callback.data == 'trainings_and_food_9_weeks':
+        await state.set_state(SubStates.trainings_and_food_9_weeks)
         NEW_PRICE = types.LabeledPrice(label='Покупка курса на 9 недель', amount=399 * 100)
         amount = {
             'value': '399.00',
@@ -1301,7 +1249,9 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         day=1
     )
     if training is None:
-        await callback.message.answer('При создании тренировки произошла ошибка')
+        await callback.message.answer(f'При создании тренировки произошла ошибка. '
+                                      f'Напишите */start* чтобы вернуться в меню.',
+                                      parse_mode='Markdown')
 
     async with state.proxy() as data:
         data['day'] = 1

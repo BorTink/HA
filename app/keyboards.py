@@ -1,10 +1,9 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 
 always_markup = ReplyKeyboardMarkup(resize_keyboard=True)
-always_markup_1 = KeyboardButton('Купить подписку')
-always_markup_2 = KeyboardButton('Вернуться в главное меню')
-always_markup_3 = KeyboardButton('Техподдержка / Оставить отзыв')
-always_markup.add(always_markup_1).add(always_markup_2).add(always_markup_3)
+always_markup_1 = KeyboardButton('Вернуться в главное меню')
+always_markup_2 = KeyboardButton('Техподдержка / Оставить отзыв')
+always_markup.add(always_markup_1).add(always_markup_2)
 
 user_info = ReplyKeyboardMarkup(resize_keyboard=True)
 user_info_1 = KeyboardButton('Вернуться в начало анкеты')
@@ -25,10 +24,9 @@ continue_keyboard_1 = InlineKeyboardButton('➡️ Перейти далее', c
 continue_keyboard.add(continue_keyboard_1)
 
 subscribe = InlineKeyboardMarkup()
-subscribe_1 = InlineKeyboardButton('99 руб./ мес.', callback_data='trainings')
-subscribe_2 = InlineKeyboardButton('199 руб./ мес.', callback_data='trainings_and_food')
-subscribe_3 = InlineKeyboardButton('399 руб./ 9 недель', callback_data='trainings_and_food_9_weeks')
-subscribe.add(subscribe_1).add(subscribe_2).add(subscribe_3)
+subscribe_1 = InlineKeyboardButton('199 руб./ мес.', callback_data='trainings_and_food')
+subscribe_2 = InlineKeyboardButton('399 руб./ 9 недель', callback_data='trainings_and_food_9_weeks')
+subscribe.add(subscribe_1).add(subscribe_2)
 
 subscribe_proposition = InlineKeyboardMarkup()
 subscribe_proposition_1 = InlineKeyboardButton('✅ Оформить подписку', callback_data='get_subscription')

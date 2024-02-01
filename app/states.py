@@ -38,5 +38,11 @@ class BaseStates(StatesGroup):
     subscription_proposition = State()
 
 
+class SubStates(StatesGroup):
+    show_add_training = State()
+    trainings_and_food = State()
+    trainings_and_food_9_weeks = State()
+
+
 class Admin(StatesGroup):
     assistant_training = State()
