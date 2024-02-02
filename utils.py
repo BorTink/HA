@@ -158,7 +158,9 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=No
         return final_training
 
     else:
-        trainings = await fill_prompt_next_week(data, trainings_prev_week, client_edits_next_week)
+        week = await dal.User.select_week(int(user_id))
+
+        trainings = await fill_prompt_next_week(data, trainings_prev_week, week, client_edits_next_week)
         await dal.Trainings.remove_prev_trainings(
             user_id=int(user_id)
         )

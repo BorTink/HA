@@ -157,7 +157,7 @@ async def fill_man_prompt_next_week(
         workout_plan, week, client_edits_next_week=None
 ):
     prompt_text = f"""
-I completed my {week} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
+I completed my {week - 1} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
 
 Give me trainings for next week, use my information, I have sent before.
 
@@ -177,7 +177,7 @@ async def fill_woman_prompt_next_week(
         workout_plan, week, client_edits_next_week=None
 ):
     prompt_text = f"""
-I completed my {week} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
+I completed my {week - 1} workout week. My results: {workout_plan}, my comment: {client_edits_next_week}
 
 Give me trainings for next week, use my information, I have sent before.
 
