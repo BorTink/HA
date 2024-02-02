@@ -144,7 +144,7 @@ async def successful_payment(message: types.Message, state: FSMContext):
             '✳️ Настало время изменений\n'
             '~ Возвращайтесь, когда наступит время вашей тренировки!'
         )
-        await dal.User.update_subscribed_parameter(message.from_user.id, 1)
+        await dal.User.update_subscription_type(message.from_user.id, 1)
 
     elif await state.get_state() == SubStates.trainings_and_food_9_weeks:
         logger.info(f'Оплата у пользователя {message.from_user.id} прошла успешно - разово 9 недель')
@@ -158,7 +158,7 @@ async def successful_payment(message: types.Message, state: FSMContext):
             '✳️ Настало время изменений\n'
             '~ Возвращайтесь, когда наступит время вашей тренировки!'
         )
-        await dal.User.update_subscribed_parameter(message.from_user.id, 2)
+        await dal.User.update_subscription_type(message.from_user.id, 2)
 
     await state.set_state(BaseStates.end_of_week_changes)
     temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
@@ -228,7 +228,8 @@ async def write_review(message: types.Message, state: FSMContext):
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.start_workout)
     training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
-    subscribed = await dal.User.check_sub_type_by_user_id(callback.from_user.id)
+    subscription_type = await dal.User.check_sub_type_by_user_id(callback.from_user.id)
+    week = await dal.User.select_week(callback.from_user.id)
 
     if training:
         async with state.proxy() as data:
@@ -237,13 +238,18 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
                 data['weight_index'] = 0
             data['workout'] = training.split(' кг')
 
+        if week == 0:
+            reply_markup = kb.insert_weights_in_workout
+        else:
+            reply_markup = kb.trainings_tab_without_prev
+
         await callback.message.edit_text(
             f'<b>День {day}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
-            reply_markup=kb.insert_weights_in_workout,
+            reply_markup=reply_markup,
             parse_mode='HTML'
         )
 
-    elif not subscribed:
+    elif not subscription_type:
         await state.set_state(BaseStates.subscription_proposition)
         await callback.message.edit_text('Пробный период подошёл к концу.')
         await asyncio.sleep(1.5)
@@ -266,13 +272,23 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
             reply_markup=kb.subscribe
         )
     else:
-        await state.set_state(BaseStates.end_of_week_changes)
-        await callback.message.edit_text(
-            'Вы закончили эту неделю тренировкок! '
-            'Перед составлением тренировок на следующую неделю, '
-            'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
-            '(до 100 символов)',
-        )
+        weeks_left = await dal.User.select_weeks_left(callback.from_user.id)
+
+        if weeks_left != 0:
+            await state.set_state(BaseStates.end_of_week_changes)
+            await callback.message.edit_text(
+                'Вы закончили эту неделю тренировкок! '
+                'Перед составлением тренировок на следующую неделю, '
+                'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
+                '(до 100 символов)',
+            )
+
+        else:
+            await callback.message.edit_text(
+                f'Вы завершили свою {week} неделю, и ваша подписка закончилась. '
+                f'Вам необходимо продлить подписку',
+                reply_markup=kb.subscribe
+            )
 
 
 @dp.callback_query_handler(state=BaseStates.end_of_trial, text='subscribe_later')
@@ -619,8 +635,6 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
         else:
             await message.answer('⏳Ваши правки будут учтены, создаются тренировки на следующую неделю')
 
-            await dal.User.increase_week_parameter(message.from_user.id)
-
             attempts = 0
             while attempts < 3:
                 try:
@@ -856,7 +870,7 @@ async def subscribe(callback: types.CallbackQuery, state: FSMContext):
 
     if callback.data == 'trainings_and_food':
         await state.set_state(SubStates.trainings_and_food)
-        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки+питание)', amount=199 * 100)
+        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц \n(Тренировки+питание)', amount=199 * 100)
         amount = {
             'value': '199.00',
             'currency': 'RUB'

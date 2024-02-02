@@ -39,8 +39,7 @@ main.add(main_1)
 
 main_admin = InlineKeyboardMarkup(resize_keyboard=True)
 main_admin_1 = InlineKeyboardButton('Перейти к тестированию ассистента', callback_data='ADMIN_go_to_assistant_testing')
-main_admin_2 = InlineKeyboardButton('Показать расписание', callback_data='SHOW_TIMETABLE')
-main_admin.add(main_admin_1).add(main_admin_2)
+main_admin.add(main_admin_1).add(main_1)
 
 main_new = InlineKeyboardMarkup(resize_keyboard=True)
 main_new_1 = InlineKeyboardButton('🔓 Начать пробный период', callback_data='insert_data')

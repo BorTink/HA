@@ -248,9 +248,8 @@ async def process_workout(
                     weight=weight
                 )
 
-        # first_training = await dal.User.check_if_first_training_by_user_id(user_id)
-        first_training = True
-        if first_training:
+        week = await dal.User.select_week(user_id)
+        if week == 0:
             await state.set_state(BaseStates.subscription_proposition)
             await edit_message_text_def(text=
                                         '🏆 Поздравляем с первой тренировкой! Первый шаг сделан.'
@@ -275,8 +274,6 @@ async def process_workout(
                                  'без которой вы не сможете добиться желаемого результата!')
             await asyncio.sleep(1)
 
-            subscribed = await dal.User.check_sub_type_by_user_id(user_id)
-
             await dal.Trainings.update_trainings(
                 user_id=user_id,
                 day=data['day'],
@@ -296,26 +293,18 @@ async def process_workout(
                 await end_not_last_workout()
 
             else:
-                if not subscribed:
-                    await state.set_state(BaseStates.subscription_proposition)
-                    await message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
-                                         'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
-                                         '• 199 руб./ мес. (Тренировки+питание)\n\n' 
-                                         '• 399 руб./ 9 недель (<i>вместо <s>507</s> руб.)~ с питанием</i>\n\n\n',
-                                         parse_mode='HTML')
-                    await asyncio.sleep(2)
+                await state.set_state(BaseStates.subscription_proposition)
 
+                await dal.User.increase_week_parameter(user_id)
+                weeks_left = await dal.User.select_weeks_left(user_id)
+
+                if weeks_left == 0:
                     await message.answer(
-                        'Функции:\n\n'
-                        '📈 <b>Прогрессивная программа тренировок</b> на 9 недель, разработанная <b>для вас, '
-                        'учитывая ваши желания</b>\n\n\n'
-                        '🍏 <b>Изменяющийся план питания</b> на протяжении всего периода тренировок\n\n\n'
-                        '⚙ Возможность <b>менять и модифицировать</b> тренировки и питание под себя\n\n\n'
-                        '🎯 <b>Наивысшая эффективность</b> за счет индивидуального подхода\n\n\n'
-                        '🛟 <b>Поддержка</b> на всём периоде занятий',
-                        parse_mode='HTML',
+                        f'Вы завершили свою {week} неделю, и ваша подписка закончилась. '
+                        f'Вам необходимо продлить подписку',
                         reply_markup=kb.subscribe
                     )
+
                 else:
                     await state.set_state(BaseStates.end_of_week_changes)
                     temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '
@@ -392,9 +381,8 @@ async def complete_training(
         active=False
     )
 
-    # first_training = await dal.User.check_if_first_training_by_user_id(user_id)
-    first_training = True
-    if first_training:
+    week = await dal.User.select_week(user_id)
+    if week == 0:
         await state.set_state(BaseStates.subscription_proposition)
         await edit_message_text_def(text=
                                     '🏆 Поздравляем с первой тренировкой! Первый шаг сделан.'
@@ -408,12 +396,11 @@ async def complete_training(
         await asyncio.sleep(1)
         return None
 
-    else:
-        await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',
-                                    chat_id=message.chat.id,
-                                    message_id=data['message']
-                                    )
-        await asyncio.sleep(1)
+    await edit_message_text_def(text='🎉 Поздравляем с успешным завершением тренировки!',
+                                chat_id=message.chat.id,
+                                message_id=data['message']
+                                )
+    await asyncio.sleep(1)
 
     await message.answer('Помните, что здоровый сон (7-8 часов) и сбалансированное питание являются '
                          'обязательной частью программы, '
@@ -437,24 +424,17 @@ async def complete_training(
     else:
         if not subscribed:
             await state.set_state(BaseStates.subscription_proposition)
-            await message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
-                                 'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
-                                 '• 199 руб./ мес. (Тренировки+питание)\n\n'
-                                 '• 399 руб./ 9 недель (<i>вместо <s>507</s> руб.)~ с питанием</i>\n\n\n',
-                                 parse_mode='HTML')
-            await asyncio.sleep(2)
 
-            await message.answer(
-                'Функции:\n\n'
-                '📈 <b>Прогрессивная программа тренировок</b> на 9 недель, разработанная <b>для вас, '
-                'учитывая ваши желания</b>\n\n\n'
-                '🍏 <b>Изменяющийся план питания</b> на протяжении всего периода тренировок\n\n\n'
-                '⚙ Возможность <b>менять и модифицировать</b> тренировки и питание под себя\n\n\n'
-                '🎯 <b>Наивысшая эффективность</b> за счет индивидуального подхода\n\n\n'
-                '🛟 <b>Поддержка</b> на всём периоде занятий',
-                parse_mode='HTML',
-                reply_markup=kb.subscribe
-            )
+            await dal.User.increase_week_parameter(user_id)
+            weeks_left = await dal.User.select_weeks_left(user_id)
+
+            if weeks_left == 0:
+                await message.answer(
+                    f'Вы завершили свою {week} неделю, и ваша подписка закончилась. '
+                    f'Вам необходимо продлить подписку',
+                    reply_markup=kb.subscribe
+                )
+
         else:
             await state.set_state(BaseStates.end_of_week_changes)
             temp_message = await message.answer('Перед составлением тренировок на следующую неделю, '

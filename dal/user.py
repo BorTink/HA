@@ -184,6 +184,17 @@ class User:
         return int(week[0])
 
     @classmethod
+    async def select_weeks_left(cls, user_id):
+        await cur.execute(f"""
+                    SELECT weeks_left
+                    FROM users
+                    WHERE tg_id = {user_id}
+                """)
+        weeks_left = await cur.fetchone()
+
+        return int(weeks_left[0])
+
+    @classmethod
     async def increase_rebuilt_param(cls, user_id):
         await cur.execute(f"""
                 UPDATE users
@@ -206,12 +217,12 @@ class User:
         await db.commit()
 
     @classmethod
-    async def update_subscribed_parameter(cls, user_id, value):
+    async def update_subscription_type(cls, user_id, value):
         await cur.execute(f"""
                     UPDATE users
                     SET subscription_type = {value},
                     subscribed_date = now(),
-                    weeks_left = {4 if value == 1 else 9 if value == 2 else 0}
+                    weeks_left = {3 if value == 1 else 8 if value == 2 else 0}
                     WHERE tg_id = {user_id}
                 """)
         logger.info(f'Параметр subscription_type у пользователя с id = {user_id} изменен на {value}')
