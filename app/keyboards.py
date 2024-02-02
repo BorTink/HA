@@ -87,25 +87,19 @@ trainings_tab_1 = InlineKeyboardButton('Пересобрать все трени
 trainings_tab_2 = InlineKeyboardButton('Начать текущую тренировку', callback_data='start_workout')
 trainings_tab_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
+trainings_tab_5 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')
 trainings_tab.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_4)
+trainings_tab.add(trainings_tab_5)
 
 trainings_tab_without_prev = InlineKeyboardMarkup(resize_keyboard=True)
-trainings_tab_without_prev_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_without_prev_2 = InlineKeyboardButton('Начать текущую тренировку', callback_data='start_workout')
 trainings_tab_without_prev_3 = InlineKeyboardButton('-', callback_data='-')
-trainings_tab_without_prev_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
-trainings_tab_without_prev.add(
-    trainings_tab_without_prev_1
-).add(trainings_tab_without_prev_2).add(trainings_tab_without_prev_3, trainings_tab_without_prev_4)
+trainings_tab_without_prev.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_without_prev_3, trainings_tab_4)
+trainings_tab_without_prev.add(trainings_tab_5)
 
 trainings_tab_without_next = InlineKeyboardMarkup(resize_keyboard=True)
-trainings_tab_without_next_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_without_next_2 = InlineKeyboardButton('Начать текущую тренировку', callback_data='start_workout')
-trainings_tab_without_next_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_without_next_4 = InlineKeyboardButton('-', callback_data='-')
-trainings_tab_without_next.add(
-    trainings_tab_without_next_1
-).add(trainings_tab_without_next_2).add(trainings_tab_without_next_3, trainings_tab_without_next_4)
+trainings_tab_without_next.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_without_next_4)
+trainings_tab_without_next.add(trainings_tab_5)
 
 start_workout = InlineKeyboardMarkup(resize_keyboard=True)
 start_workout_1 = InlineKeyboardButton('Начать тренировку', callback_data='insert_weights')

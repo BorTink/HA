@@ -746,7 +746,7 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
     await state.set_state(BaseStates.start_workout)
 
 
-@dp.callback_query_handler(state=[BaseStates.start_workout, BaseStates.add_weight], text='meal_plan')
+@dp.callback_query_handler(state='*', text='meal_plan')
 async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.meals)
     async with state.proxy() as data:
