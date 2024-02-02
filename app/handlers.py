@@ -37,7 +37,7 @@ async def start(message: types.Message, state: FSMContext):
     await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
-    trainings, day = await dal.Trainings.get_active_training_by_user_id(message.from_user.id)
+    trainings = await dal.Trainings.check_trainings(message.from_user.id)
     logger.info(f'user - {user}')
 
     if user and trainings:

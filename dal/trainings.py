@@ -123,6 +123,22 @@ class Trainings:
                          f'day - {day}, user_id - {user_id}')
 
     @classmethod
+    async def check_trainings(cls, user_id):
+        await cur.execute(f"""
+            SELECT *
+            FROM trainings
+            WHERE user_id = {user_id}
+            LIMIT 1
+        """)
+        trainings = await cur.fetchone()
+
+        if trainings:
+            return True
+
+        else:
+            return False
+
+    @classmethod
     async def get_trainings_by_day(cls, user_id, day):
         await cur.execute(f"""
             SELECT data, day, active
