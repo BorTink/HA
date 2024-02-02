@@ -1178,48 +1178,75 @@ async def add_goal(callback: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(state=PersonChars.focus)
 async def add_health_restrictions(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['goals'] += '. Additionally, ' + message.text
-        await message.delete()
-        await bot.edit_message_text(
-            'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
-            '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
-            'Напишите до 100 символов.',
-            chat_id=message.chat.id,
-            message_id=data['info_message']
-        )
+        if len(message.text) > 100:
+            await bot.edit_message_text(
+                'Вы ввели более 100 символов.\n\n'
+                'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
+            )
+        else:
+            data['goals'] += '. Additionally, ' + message.text
+            await message.delete()
+            await bot.edit_message_text(
+                'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
+                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
+                'Напишите до 100 символов.',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
+            )
 
-        await PersonChars.health_restrictions.set()
+            await PersonChars.health_restrictions.set()
 
 
 @dp.message_handler(state=PersonChars.health_restrictions)
 async def add_allergy_products(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['health_restrictions'] = message.text
+        if len(message.text) > 100:
+            await bot.edit_message_text(
+                'Вы ввели более 100 символов.\n\n'
+                'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
+                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
+                'Напишите до 100 символов.',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
+            )
+        else:
+            data['health_restrictions'] = message.text
 
-        await message.delete()
-        await bot.edit_message_text(
-            'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? (Напишите до 100 символов)',
-            chat_id=message.chat.id,
-            message_id=data['info_message']
-        )
+            await message.delete()
+            await bot.edit_message_text(
+                'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? (Напишите до 100 символов)',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
+            )
 
-        await PersonChars.allergy.set()
+            await PersonChars.allergy.set()
 
 
 @dp.message_handler(state=PersonChars.allergy)
 async def add_intensity(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        data['allergy'] = message.text
+        if len(message.text) > 100:
+            await bot.edit_message_text(
+                'Вы ввели более 100 символов.\n\n'
+                'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? '
+                '(Напишите до 100 символов)',
+                chat_id=message.chat.id,
+                message_id=data['info_message']
+            )
+        else:
+            data['allergy'] = message.text
 
-        await message.delete()
-        await bot.edit_message_text(
-            'Выберите, сколько раз в неделю вы готовы заниматься. ',
-            chat_id=message.chat.id,
-            message_id=data['info_message'],
-            reply_markup=kb.times_per_week
-        )
+            await message.delete()
+            await bot.edit_message_text(
+                'Выберите, сколько раз в неделю вы готовы заниматься. ',
+                chat_id=message.chat.id,
+                message_id=data['info_message'],
+                reply_markup=kb.times_per_week
+            )
 
-        await PersonChars.times_per_week.set()
+            await PersonChars.times_per_week.set()
 
 
 @dp.callback_query_handler(state=PersonChars.times_per_week)
