@@ -226,8 +226,8 @@ async def write_review(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(state='*', text=['SHOW_TIMETABLE', 'back_to_timetable'])
 async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
-    await state.set_state(BaseStates.start_workout)
-    training, day = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+    await state.set_state(BaseStates.show_trainings)
+    training, day, _ = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
     subscription_type = await dal.User.check_sub_type_by_user_id(callback.from_user.id)
     week = await dal.User.select_week(callback.from_user.id)
 
@@ -241,7 +241,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         if week == 0:
             reply_markup = kb.insert_weights_in_workout
         else:
-            reply_markup = kb.trainings_tab_without_prev
+            reply_markup = await get_training_markup(callback.from_user.id, data['day'])
 
         await callback.message.edit_text(
             f'<b>День {day}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
@@ -439,7 +439,7 @@ async def prestart_workout(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.start_workout)
     async with state.proxy() as data:
         data['weight_index'] = 0
-        data['workout'], data['day'] = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+        data['workout'], data['day'], _ = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
         data['workout'] = data['workout'].split(' кг')
     await callback.message.answer(
         '☝После того, как пройдете тренировку (или по ходу выполнения упражнений), '
@@ -785,28 +785,39 @@ async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.meals, text='go_to_workout')
 async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
-        await state.set_state(BaseStates.start_workout)
-
         data['message'] = callback.message.message_id
-        data['workout'], data['day'] = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
-        data['workout'] = data['workout'].split(' кг')
+        data['workout'], data['day'], in_progress = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
 
-        if 'weight_index' not in data.keys():
-            data['weight_index'] = 0
+        if in_progress:
+            await state.set_state(BaseStates.start_workout)
+            data['workout'] = data['workout'].split(' кг')
 
-        current_weight = data['workout'][data['weight_index']].split(' ')[-1]
-        workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+            if 'weight_index' not in data.keys():
+                data['weight_index'] = 0
 
-        await process_workout(
-            workout_in_process,
-            data,
-            state,
-            callback.message,
-            kb,
-            user_id=callback.from_user.id,
-            return_to_training=True,
-            skip_db=True
-        )
+            current_weight = data['workout'][data['weight_index']].split(' ')[-1]
+            workout_in_process = await split_workout(data['workout'], data['weight_index'], current_weight)
+
+            await process_workout(
+                workout_in_process,
+                data,
+                state,
+                callback.message,
+                kb,
+                user_id=callback.from_user.id,
+                return_to_training=True,
+                skip_db=True
+            )
+
+        else:
+            await state.set_state(BaseStates.show_trainings)
+
+            reply_markup = await get_training_markup(callback.from_user.id, data['day'])
+            await callback.message.edit_text(
+                f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + data['workout'],
+                reply_markup=reply_markup,
+                parse_mode='HTML'
+            )
 
 
 @dp.callback_query_handler(state=BaseStates.subscription_proposition, text='watch_proposition')
@@ -920,7 +931,7 @@ async def create_edit(callback: types.CallbackQuery):
     await callback.message.answer(
         '🏃🏽 Пробный период начался!\n\n'
         '*Сейчас вам доступно:*\n\n'
-        '• *1 тренировка* с возможностью *пересборки* на ваших комментариях (если вам что-то не понравится);\n\n'
+        '• *1 тренировка* с возможностью *корректировки* на ваших комментариях (если вам что-то не понравится);\n\n'
         '• Внесение *своих показателей и комментариев* по упражнениям и *просмотр тренировки 7-й* недели;\n\n'
         '• Просмотр *вашей персональной траектории развития* на 9 недель;\n\n'
         '• *План питания на день* в соответствии с *вашими целями*',
@@ -1189,8 +1200,9 @@ async def add_health_restrictions(message: types.Message, state: FSMContext):
             data['goals'] += '. Additionally, ' + message.text
             await message.delete()
             await bot.edit_message_text(
-                'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
-                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
+                'Есть ли у вас какие-нибудь противопоказания к тренировкам? '
+                'Если да, то укажите какие, напишите «нет», если их нету. '
+                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление). '
                 'Напишите до 100 символов.',
                 chat_id=message.chat.id,
                 message_id=data['info_message']
@@ -1205,8 +1217,9 @@ async def add_allergy_products(message: types.Message, state: FSMContext):
         if len(message.text) > 100:
             await bot.edit_message_text(
                 'Вы ввели более 100 символов.\n\n'
-                'Есть ли у вас какие-нибудь противопоказания к тренировкам? Если да, то укажите какие '
-                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление).'
+                'Есть ли у вас какие-нибудь противопоказания к тренировкам? '
+                'Если да, то укажите какие, напишите «нет», если их нету. '
+                '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление). '
                 'Напишите до 100 символов.',
                 chat_id=message.chat.id,
                 message_id=data['info_message']
@@ -1280,6 +1293,11 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
         except Exception as exc:
             logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
             attempts += 1
+            if attempts == 3:
+                await callback.message.answer(
+                    'При создании тренировки произошла ошибка. Введите команду */start*, чтобы заново пройти анкету.',
+                    parse_mode='Markdown'
+                )
 
     await dal.Trainings.update_active_training_by_day(
         user_id=callback.from_user.id,

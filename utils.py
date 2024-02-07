@@ -209,7 +209,7 @@ async def process_workout(
         await bot.edit_message_text(text, chat_id, message_id, **kwargs)
 
     async def end_not_last_workout():
-        training, day = await dal.Trainings.get_active_training_by_user_id(user_id)
+        training, day, _ = await dal.Trainings.get_active_training_by_user_id(user_id)
 
         async with state.proxy() as data:
             next_training_in_days = int(day) - int(data['day'])
@@ -222,6 +222,17 @@ async def process_workout(
                 day_word = 'дней'
 
             await message.answer(f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
+
+            data['day'] = day
+            data['workout'] = training
+
+        await asyncio.sleep(2)
+        reply_markup = await get_training_markup(user_id, data['day'])
+        await message.answer(
+            f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
     if user_id is None:
         user_id = message.from_user.id
@@ -344,7 +355,7 @@ async def complete_training(
         await bot.edit_message_text(text, chat_id, message_id, **kwargs)
 
     async def end_not_last_workout():
-        training, day = await dal.Trainings.get_active_training_by_user_id(user_id)
+        training, day, _ = await dal.Trainings.get_active_training_by_user_id(user_id)
 
         async with state.proxy() as data:
             next_training_in_days = int(day) - int(data['day'])
@@ -357,6 +368,14 @@ async def complete_training(
                 day_word = 'дней'
 
             await message.answer(f'Следующая тренировка ждёт вас через {next_training_in_days} {day_word}.')
+
+        await asyncio.sleep(2)
+        reply_markup = await get_training_markup(user_id, data['day'])
+        await message.answer(
+            f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
+            reply_markup=reply_markup,
+            parse_mode='HTML'
+        )
 
     await state.set_state(BaseStates.show_trainings)
 

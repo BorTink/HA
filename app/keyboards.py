@@ -84,7 +84,7 @@ show_program.add(show_program_1)
 
 trainings_tab = InlineKeyboardMarkup(resize_keyboard=True)
 trainings_tab_1 = InlineKeyboardButton('Пересобрать все тренировки', callback_data='rebuild_workouts')
-trainings_tab_2 = InlineKeyboardButton('Начать текущую тренировку', callback_data='start_workout')
+trainings_tab_2 = InlineKeyboardButton('Начать активную тренировку', callback_data='start_workout')
 trainings_tab_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
 trainings_tab_5 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')

@@ -193,7 +193,7 @@ class Trainings:
     @classmethod
     async def get_active_training_by_user_id(cls, user_id):
         await cur.execute(f"""
-            SELECT data, day
+            SELECT data, day, in_progress
             FROM trainings
             WHERE active = 1
             AND user_id = {user_id}
@@ -204,4 +204,4 @@ class Trainings:
         else:
             logger.warning(f'У пользователя {user_id} нет активных тренировок')
 
-        return active_training if active_training else (None, None)
+        return active_training if active_training else (None, None, None)
