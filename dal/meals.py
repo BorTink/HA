@@ -22,6 +22,16 @@ class Meals:
                     """)
 
     @classmethod
+    async def remove_prev_meals(cls, user_id):
+        await cur.execute(f"""
+        DELETE FROM meals
+        WHERE user_id = {user_id}
+        """)
+
+        logger.info(f'Все питание пользователя с id = {user_id} было удалено.')
+        await db.commit()
+
+    @classmethod
     async def insert_meal(cls, user_id, day, meal_plan):
         await cur.execute(
             f"""
@@ -41,7 +51,7 @@ class Meals:
             """)
         meal = await cur.fetchone()
 
-        return meal if meal else (None, None)
+        return schemas.Meal(**dict(meal)) if meal else (None, None)
 
     @classmethod
     async def get_all_meals_by_user_id(cls, user_id):
@@ -53,3 +63,29 @@ class Meals:
         meals = await cur.fetchall()
 
         return [schemas.Meal(**dict(meal)) for meal in meals] if meals else None
+
+    @classmethod
+    async def get_next_meal(cls, user_id, current_day):
+        await cur.execute(f"""
+                SELECT meal_plan, day
+                FROM meals
+                WHERE user_id = {user_id}
+                AND day > {current_day}
+                ORDER BY day ASC
+                """)
+        meal = await cur.fetchone()
+
+        return schemas.Meal(**dict(meal)) if meal else None
+
+    @classmethod
+    async def get_prev_meal(cls, user_id, current_day):
+        await cur.execute(f"""
+                SELECT meal_plan, day
+                FROM meals
+                WHERE user_id = {user_id}
+                AND day < {current_day}
+                ORDER BY day ASC
+                """)
+        meal = await cur.fetchone()
+
+        return schemas.Meal(**dict(meal)) if meal else None

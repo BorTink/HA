@@ -193,11 +193,13 @@ Don't include more than 6 exercises in one training.
     return prompt_text
 
 
-async def fill_man_meal_plan_prompt(
+async def fill_meal_plan_prompt_text_trial(
         prompt_data: schemas.PromptData,
 ):
     prompt_text = f"""
-You made 9 week training plan, use next information to make nutrition plan for 1 week. 
+You made a 9 week training plan for a person, use this person's information to make nutrition plan for 1 week.
+Make it not expensive, don't include protein powder and use common ingredients and recipies.
+ 
 Gender - male, 
 Age - {prompt_data.age} years old,
 Height - {prompt_data.height} cm, 
@@ -209,20 +211,32 @@ Health restrictions - {prompt_data.health_restrictions},
 allergies and food intolerances - {prompt_data.allergy},
 Trainings per week - {prompt_data.times_per_week}\n
 
-A 1 week food plan is required. 
+Only a one-week food plan is required. 
 Дай ответ на русском,  дай мне план питания на один день первой недели для демонстрации. 
 Не пиши ничего кроме плана питания. Пиши номер плана, пример: “Питание 1”, учитывая, что в неделе 7 дней.
 """
     return prompt_text
 
 
-async def fill_woman_meal_plan_prompt(
+async def fill_meal_plan_prompt_text_end_of_trial():
+    prompt_text = f"""
+You made me a nutrition plan for the 1st day of the 1st week. Make me nutrition plan for the other 6 days.
+Split the days with "----------"
+Дай ответ на русском. 
+Не пиши ничего кроме плана питания. Пиши номер плана, пример: “Питание 1”, учитывая, что в неделе 7 дней.
+"""
+    return prompt_text
+
+
+async def fill_meal_plan_prompt_text_next_week(
         prompt_data: schemas.PromptData,
-        week=1
+        week=2
 ):
     prompt_text = f"""
-You made 9 week training plan, use next information to make nutrition plan for {week} week. 
-Gender - female, 
+Based on my information create a nutrition plan for {week} week. Only a one-week food plan is required. 
+Split the days with "----------"
+
+Gender - male, 
 Age - {prompt_data.age} years old,
 Height - {prompt_data.height} cm, 
 Weight - {prompt_data.weight} kg, 
@@ -233,7 +247,7 @@ Health restrictions - {prompt_data.health_restrictions},
 allergies and food intolerances - {prompt_data.allergy},
 Trainings per week - {prompt_data.times_per_week}\n
 
-A 1 week food plan is required. 
+Only a one-week food plan is required. 
 Дай ответ на русском,  дай мне план питания на один день первой недели для демонстрации. 
 Не пиши ничего кроме плана питания. Пиши номер плана, пример: “Питание 1”, учитывая, что в неделе 7 дней.
 """

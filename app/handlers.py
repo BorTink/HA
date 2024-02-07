@@ -12,8 +12,9 @@ from dotenv import load_dotenv
 from loguru import logger
 
 import dal
-from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, get_training_markup, \
-    proccess_meal_plan_prompt, complete_training
+from utils import process_prompt, process_prompt_next_week, split_workout, process_workout, \
+    get_training_markup, get_meal_markup, \
+    proccess_meal_plan_prompt, proccess_meal_plan_prompt_next_week, complete_training
 from app import keyboards as kb
 from gpt.chat import ChatGPT
 from .states import PersonChars, BaseStates, Admin, SubStates
@@ -749,35 +750,93 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 @dp.callback_query_handler(state='*', text='meal_plan')
 async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.meals)
-    async with state.proxy() as data:
-        try:
-            await bot.delete_message(callback.message.chat.id, data['temp_message'])
-        except:
-            pass
 
-    meals = await dal.Meals.get_all_meals_by_user_id(callback.from_user.id)
-    if meals:
-        meal_plan = meals[0].meal_plan
-        await callback.message.edit_text(
+    meal = await dal.Meals.get_meal_by_day(callback.from_user.id, 1)
+    week = await dal.User.select_week(callback.from_user.id)
+    if meal:
+        if week == 0:
+            reply_markup = kb.meal_plan_trial
+        else:
+            reply_markup = kb.meal_plan_without_prev
+        meal_plan = meal.meal_plan
+        await callback.message.answer(
             meal_plan,
-            reply_markup=kb.meal_plan,
+            reply_markup=reply_markup,
             parse_mode='HTML'
         )
     else:
-        await callback.message.edit_text(
+        await callback.message.answer(
             '⏳Ваш план питания составляется, подождите (не более 2х минут)…'
         )
+        if week == 0:
+            meal_plan = await proccess_meal_plan_prompt(callback.from_user.id)
 
-        meal_plan = await proccess_meal_plan_prompt(callback.from_user.id)
+            await callback.message.answer(
+                '🍏 Ваш план питания составлен! \n\n'
+                'Старайтесь следовать инструкциям!'
+            )
 
+            await callback.message.answer(
+                meal_plan,
+                reply_markup=kb.meal_plan_trial,
+                parse_mode='HTML'
+            )
+        else:
+            meal_plan = await proccess_meal_plan_prompt_next_week(callback.from_user.id, week)
+
+            await callback.message.answer(
+                '🍏 Ваш план питания составлен! \n\n'
+                'Старайтесь следовать инструкциям!'
+            )
+
+            await callback.message.answer(
+                meal_plan,
+                reply_markup=kb.meal_plan_trial,
+                parse_mode='HTML'
+            )
+
+
+@dp.callback_query_handler(state=BaseStates.meals, text=['next_meal_day', 'prev_meal_day'])
+async def switch_days(callback: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        if callback.data == 'next_meal_day':
+            meal, new_day = await dal.Meals.get_next_meal(
+                user_id=callback.from_user.id,
+                current_day=data['day']
+            )
+            if meal:
+                data['day'] = new_day
+                data['meal'] = meal
+
+            else:
+                meal, new_day = await dal.Meals.get_meal_by_day(
+                    user_id=callback.from_user.id,
+                    day=1
+                )
+                data['day'] = 1
+                data['workout'] = meal
+
+        elif callback.data == 'prev_meal_day':
+            meal, new_day = await dal.Meals.get_prev_meal(
+                user_id=callback.from_user.id,
+                current_day=data['day']
+            )
+            if meal:
+                data['day'] = new_day
+                data['meal'] = meal
+
+            else:
+                meal, new_day = await dal.Meals.get_prev_meal(
+                    user_id=callback.from_user.id,
+                    current_day=1000000
+                )
+                data['day'] = new_day
+                data['meal'] = meal
+
+        reply_markup = await get_meal_markup(callback.from_user.id, data['day'])
         await callback.message.edit_text(
-            '🍏 Ваш план питания составлен! \n\n'
-            'Старайтесь следовать инструкциям!'
-        )
-
-        await callback.message.edit_text(
-            meal_plan,
-            reply_markup=kb.meal_plan,
+            f'<b>День {data["day"]}</b>\n' + meal,
+            reply_markup=reply_markup,
             parse_mode='HTML'
         )
 

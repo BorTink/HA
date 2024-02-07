@@ -14,7 +14,7 @@ from gpt.prompts import fill_man_prompt, fill_woman_prompt, \
     fill_prompt_end_of_trial,\
     fill_man_prompt_demo, fill_woman_prompt_demo, \
     fill_man_prompt_next_week, fill_woman_prompt_next_week, \
-    fill_man_meal_plan_prompt, fill_woman_meal_plan_prompt
+    fill_meal_plan_prompt_text_trial, fill_meal_plan_prompt_text_next_week
 
 load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
 openai.api_key = os.getenv('GPT_API_TOKEN')
@@ -250,11 +250,44 @@ async def fill_meal_plan_prompt(prompt_data: schemas.PromptData):
     global meal_gpt
 
     if prompt_data.gender == 'Женский':
-        prompt_text = await fill_woman_meal_plan_prompt(prompt_data)
+        prompt_text = await fill_meal_plan_prompt_text_trial(prompt_data)
         meal_gpt = ChatGPT(os.getenv('WOMAN_ASSISTANT_ID'))
     else:
-        prompt_text = await fill_man_meal_plan_prompt(prompt_data)
+        prompt_text = await fill_meal_plan_prompt_text_trial(prompt_data)
         meal_gpt = ChatGPT(os.getenv('MAN_ASSISTANT_ID'))
+
+    await meal_gpt.create_thread()
+
+    await meal_gpt.add_message(prompt_text)
+
+    await meal_gpt.create_run()
+    status = await meal_gpt.get_run_status()
+    await asyncio.sleep(5)
+
+    while status.status != 'completed':
+        status = await meal_gpt.get_run_status()
+        await asyncio.sleep(5)
+
+    messages = await meal_gpt.get_all_messages()
+    meal_plan = messages.data[0].content[0].text.value
+
+    return meal_plan
+
+
+async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week):
+    if prompt_data.gender == 'Женский':
+        assistant_id_tag = 'WOMAN_ASSISTANT_ID'
+    else:
+        assistant_id_tag = 'MAN_ASSISTANT_ID'
+
+    if week == 1:
+        prompt_text = await fill_meal_plan_prompt_text_trial(prompt_data)
+    else:
+        prompt_text = await fill_meal_plan_prompt_text_next_week(prompt_data, week)
+
+    if 'workout_gpt' not in locals():
+        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
+        await workout_gpt.create_thread()
 
     await meal_gpt.create_thread()
 

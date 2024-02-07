@@ -1,7 +1,8 @@
 from loguru import logger
 import asyncio
 
-from gpt.chat import fill_prompt, fill_prompt_next_week, fill_meal_plan_prompt, fill_prompt_demo
+from gpt.chat import fill_prompt, fill_prompt_next_week, fill_meal_plan_prompt_text_trial, fill_prompt_demo, \
+    fill_meal_plan_prompt_next_week
 from app.states import BaseStates
 import app.keyboards as kb
 import dal
@@ -75,7 +76,7 @@ async def proccess_meal_plan_prompt(user_id):
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
 
-    meal_plan = await fill_meal_plan_prompt(data)
+    meal_plan = await fill_meal_plan_prompt_text_trial(data)
 
     meal_plan = replace_nth_occ(meal_plan, '**', '</b>', 2)
     meal_plan = meal_plan.replace('**', '<b>')
@@ -87,6 +88,33 @@ async def proccess_meal_plan_prompt(user_id):
     )
 
     return meal_plan
+
+
+async def proccess_meal_plan_prompt_next_week(user_id, week):
+    logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
+    data = await dal.User.select_attributes(user_id)
+
+    meal_plan = await fill_meal_plan_prompt_next_week(data, week)
+
+    meal_plan = replace_nth_occ(meal_plan, '**', '</b>', 2)
+    meal_plan = meal_plan.replace('**', '<b>')
+
+    meal_plan = meal_plan.split('----------')
+
+    for i in range(meal_plan):
+        await dal.Meals.insert_meal(
+            user_id=int(user_id),
+            day=i+1,
+            meal_plan=meal_plan[i]
+        )
+
+    await dal.Meals.insert_meal(
+        user_id=int(user_id),
+        day=1,
+        meal_plan=meal_plan
+    )
+
+    return meal_plan[0]
 
 
 async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=None):
@@ -405,6 +433,7 @@ async def complete_training(
     week = await dal.User.select_week(user_id)
     if week == 0:
         await state.set_state(BaseStates.subscription_proposition)
+        await dal.Meals.remove_prev_meals(user_id)
         await edit_message_text_def(text=
                                     '🏆 Поздравляем с первой тренировкой! Первый шаг сделан.'
                                     '— Далее вы можете <b>посмотреть</b> как будет <b>выглядеть</b> '
@@ -482,6 +511,27 @@ async def get_training_markup(user_id, day, ):
         )
         if prev_training is None:
             reply_markup = kb.trainings_tab_without_prev
+
+    return reply_markup
+
+
+async def get_meal_markup(user_id, day, ):
+    next_meal, _, _ = await dal.Meals.get_next_meal(
+        user_id=user_id,
+        current_day=day
+    )
+
+    reply_markup = kb.meal_plan
+    if next_meal is None:
+        reply_markup = kb.meal_plan_without_next
+
+    else:
+        prev_meal, _, _ = await dal.Meals.get_prev_meal(
+            user_id=user_id,
+            current_day=day
+        )
+        if prev_meal is None:
+            reply_markup = kb.meal_plan_without_prev
 
     return reply_markup
 

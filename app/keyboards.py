@@ -118,9 +118,22 @@ insert_weight_1 = InlineKeyboardButton('Перейти к следующему �
 insert_weight_2 = InlineKeyboardButton('Перейти к предыдущему упражнению', callback_data='prev_exercise')
 insert_weight.add(insert_weight_1).add(insert_weight_2)
 
+meal_plan_trial = InlineKeyboardMarkup()
+meal_plan_trial_3 = InlineKeyboardButton('Тренировка', callback_data='go_to_workout')
+meal_plan_trial.add(meal_plan_trial_3)
+
 meal_plan = InlineKeyboardMarkup()
-meal_plan_1 = InlineKeyboardButton('Тренировка', callback_data='go_to_workout')
-meal_plan.add(meal_plan_1)
+meal_plan_1 = InlineKeyboardButton('Предыдущий день', callback_data='prev_meal_day')
+meal_plan_2 = InlineKeyboardButton('Следующий день', callback_data='next_meal_day')
+meal_plan.add(meal_plan_1, meal_plan_2).add(meal_plan_1)
+
+meal_plan_without_prev = InlineKeyboardMarkup()
+meal_plan_without_prev_1 = InlineKeyboardButton('-', callback_data='-')
+meal_plan_without_prev.add(meal_plan_without_prev_1, meal_plan_2).add(meal_plan_trial_3)
+
+meal_plan_without_next = InlineKeyboardMarkup()
+meal_plan_without_next_2 = InlineKeyboardButton('-', callback_data='-')
+meal_plan_without_next.add(meal_plan_1, meal_plan_without_next_2).add(meal_plan_trial_3)
 
 complete_workout = InlineKeyboardMarkup(resize_keyboard=True)
 complete_workout_1 = InlineKeyboardButton('Да', callback_data='yes')
