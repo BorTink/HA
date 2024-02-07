@@ -125,7 +125,9 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
 
     await workout_gpt.add_message(prompt_text)
 
-    status = await workout_gpt.create_run()
+    await workout_gpt.create_run()
+    status = await workout_gpt.get_run_status()
+    await asyncio.sleep(5)
 
     while status.status != 'completed':
         status = await workout_gpt.get_run_status()
@@ -133,6 +135,10 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
 
     messages = await workout_gpt.get_all_messages()
     training = messages.data[0].content[0].text.value
+
+    if 'Generate a program' in training:
+        logger.error('Произошел баг с вставкой промпта вместо ответа')
+        raise Exception
 
     training = training.split('\n----------\n')
     program = training[0]
@@ -166,7 +172,9 @@ async def fill_prompt_demo(
 
     await workout_gpt.add_message(prompt_text)
 
-    status = await workout_gpt.create_run()
+    await workout_gpt.create_run()
+    status = await workout_gpt.get_run_status()
+    await asyncio.sleep(5)
 
     while status.status != 'completed':
         status = await workout_gpt.get_run_status()
@@ -210,7 +218,9 @@ async def fill_prompt_next_week(
 
     await workout_gpt.add_message(prompt_text)
 
-    status = await workout_gpt.create_run()
+    await workout_gpt.create_run()
+    status = await workout_gpt.get_run_status()
+    await asyncio.sleep(5)
 
     while status.status != 'completed':
         status = await workout_gpt.get_run_status()
@@ -250,7 +260,9 @@ async def fill_meal_plan_prompt(prompt_data: schemas.PromptData):
 
     await meal_gpt.add_message(prompt_text)
 
-    status = await meal_gpt.create_run()
+    await meal_gpt.create_run()
+    status = await meal_gpt.get_run_status()
+    await asyncio.sleep(5)
 
     while status.status != 'completed':
         status = await meal_gpt.get_run_status()
