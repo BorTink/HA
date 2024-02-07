@@ -193,7 +193,7 @@ async def support(message: types.Message, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.support, text='tech_support')
 async def tech_support(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.edit_text('Со всеми вопросами пишите сюда https://t.me/sergey_akhapkin1703')
+    await callback.message.answer('Со всеми вопросами пишите сюда https://t.me/sergey_akhapkin1703')
 
     await state.finish()
 
@@ -206,7 +206,7 @@ async def tech_support(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query_handler(state=BaseStates.support, text='add_review')
 async def add_review(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.add_review)
-    await callback.message.edit_text('Напишите в следующем сообщении свой отзыв')
+    await callback.message.answer('Напишите в следующем сообщении свой отзыв')
 
 
 @dp.message_handler(state=BaseStates.add_review)
@@ -244,7 +244,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
         else:
             reply_markup = await get_training_markup(callback.from_user.id, data['day'])
 
-        await callback.message.edit_text(
+        await callback.message.answer(
             f'<b>День {day}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + training,
             reply_markup=reply_markup,
             parse_mode='HTML'
@@ -252,7 +252,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
     elif not subscription_type:
         await state.set_state(BaseStates.subscription_proposition)
-        await callback.message.edit_text('Пробный период подошёл к концу.')
+        await callback.message.answer('Пробный период подошёл к концу.')
         await asyncio.sleep(1.5)
         await callback.message.answer('〰 Чтобы продолжить заниматься и достичь цели, '
                                       'вам необходимо оплатить подписку или сразу купить план на 9 недель:\n\n'
@@ -277,7 +277,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
         if weeks_left != 0:
             await state.set_state(BaseStates.end_of_week_changes)
-            await callback.message.edit_text(
+            await callback.message.answer(
                 'Вы закончили эту неделю тренировкок! '
                 'Перед составлением тренировок на следующую неделю, '
                 'напишите коррективы, которые вы бы хотели внести в тренировки в целом '
@@ -285,7 +285,7 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
             )
 
         else:
-            await callback.message.edit_text(
+            await callback.message.answer(
                 f'Вы завершили свою {week} неделю, и ваша подписка закончилась. '
                 f'Вам необходимо продлить подписку',
                 reply_markup=kb.subscribe
@@ -630,7 +630,7 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
     async with state.proxy() as data:
         if len(message.text) > 100:
             await bot.delete_message(message.chat.id, message.message_id)
-            temp_message = await bot.edit_message_text('Ваши коррективы на тренировки должны быть меньше 100 символов',
+            temp_message = await message.answer('Ваши коррективы на тренировки должны быть меньше 100 символов',
                                                        message.chat.id, data['temp_message'])
             data['temp_message'] = temp_message.message_id
         else:
@@ -872,7 +872,7 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
             await state.set_state(BaseStates.show_trainings)
 
             reply_markup = await get_training_markup(callback.from_user.id, data['day'])
-            await callback.message.edit_text(
+            await callback.message.answer(
                 f'<b>День {data["day"]}</b>\n' + f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' + data['workout'],
                 reply_markup=reply_markup,
                 parse_mode='HTML'
@@ -1028,8 +1028,7 @@ async def add_sex(callback: types.CallbackQuery, state: FSMContext):
         if callback.data == 'gender_woman':
             data['gender'] = 'Женский'
 
-        info_message = await callback.message.edit_text('Введите свой возраст (Полных лет)')
-        data['info_message'] = info_message.message_id
+        await callback.message.answer('Введите свой возраст (Полных лет)')
         await PersonChars.age.set()
 
 
@@ -1037,24 +1036,13 @@ async def add_sex(callback: types.CallbackQuery, state: FSMContext):
 async def add_age(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
-
-            info_message = await message.answer('Необходимо ввести числовое значение. '
-                                                'Введите свой возраст (Полных лет)')
-            data['info_message'] = info_message.message_id
+            await message.answer('Необходимо ввести числовое значение. '
+                                 'Введите свой возраст (Полных лет)')
 
         else:
             data['age'] = int(message.text)
-
-            await message.delete()
-            await bot.edit_message_text(
-                'Укажите свой рост (см)',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+            await message.answer(
+                'Укажите свой рост (см)'
             )
             await PersonChars.height.set()
 
@@ -1063,22 +1051,11 @@ async def add_age(message: types.Message, state: FSMContext):
 async def add_height(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
-
-            info_message = await message.answer('Необходимо ввести числовое значение')
-            data['info_message'] = info_message.message_id
+            await message.answer('Необходимо ввести числовое значение')
         else:
             data['height'] = int(message.text)
-
-            await message.delete()
-            await bot.edit_message_text(
-                'Введите свой вес (кг)',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+            await message.answer(
+                'Введите свой вес (кг)'
             )
             await PersonChars.weight.set()
 
@@ -1087,22 +1064,12 @@ async def add_height(message: types.Message, state: FSMContext):
 async def add_weight(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
+            await message.answer('Необходимо ввести числовое значение')
 
-            info_message = await message.answer('Необходимо ввести числовое значение')
-            data['info_message'] = info_message.message_id
         else:
             data['weight'] = int(message.text)
-
-            await message.delete()
-            await bot.edit_message_text(
+            await message.answer(
                 'Оцените ваш уровень физической подготовки',
-                chat_id=message.chat.id,
-                message_id=data['info_message'],
                 reply_markup=kb.gym_experience
             )
             await PersonChars.gym_experience.set()
@@ -1113,13 +1080,13 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['gym_experience'] = callback.data
     if callback.data in ['medium', 'experienced']:
-        await callback.message.edit_text(
+        await callback.message.answer(
             'Знаете ли вы свои максимальные показатели веса в жиме лежа, становой тяге и приседаниях со штангой?',
             reply_markup=kb.max_results
         )
         await PersonChars.max_results.set()
     else:
-        await callback.message.edit_text(
+        await callback.message.answer(
             'Каких результатов вы ожидаете от тренировок?',
             reply_markup=kb.expected_results
         )
@@ -1130,18 +1097,16 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
 async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         if callback.data == 'yes':
-            info_message = await callback.message.edit_text(
+            info_message = await callback.message.answer(
                 'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
             )
-            data['info_message'] = info_message.message_id
             await PersonChars.bench_results.set()
 
         if callback.data == 'no':
-            info_message = await callback.message.edit_text(
+            info_message = await callback.message.answer(
                 'Каких результатов вы ожидаете от тренировок?',
                 reply_markup=kb.expected_results
             )
-            data['info_message'] = info_message.message_id
             await PersonChars.goals.set()
 
 
@@ -1149,24 +1114,13 @@ async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
 async def add_bench_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
-
-            info_message = await message.answer('Необходимо ввести числовое значение')
-            data['info_message'] = info_message.message_id
+            await message.answer('Необходимо ввести числовое значение')
         else:
             data['bench_results'] = int(message.text)
 
-            await message.delete()
-            info_message = await bot.edit_message_text(
+            await message.answer(
                 'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
             )
-            data['info_message'] = info_message.message_id
             await PersonChars.deadlift_results.set()
 
 
@@ -1174,24 +1128,13 @@ async def add_bench_results(message: types.Message, state: FSMContext):
 async def add_deadlift_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
-
-            info_message = await message.answer('Необходимо ввести числовое значение')
-            data['info_message'] = info_message.message_id
+            await message.answer('Необходимо ввести числовое значение')
         else:
             data['deadlift_results'] = int(message.text)
 
-            await message.delete()
-            info_message = await bot.edit_message_text(
-                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+            await message.answer(
+                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).'
             )
-            data['info_message'] = info_message.message_id
             await PersonChars.squats_results.set()
 
 
@@ -1199,25 +1142,15 @@ async def add_deadlift_results(message: types.Message, state: FSMContext):
 async def add_squats_results(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if message.text.isdigit() is False:
-            try:
-                await bot.delete_message(message.chat.id, data['info_message'])
-            except Exception as exc:
-                pass
-            await message.delete()
 
-            info_message = await message.answer('Необходимо ввести числовое значение')
-            data['info_message'] = info_message.message_id
+            await message.answer('Необходимо ввести числовое значение')
         else:
             data['squats_results'] = int(message.text)
 
-            await message.delete()
-            await bot.edit_message_text(
+            await message.answer(
                 'Каких результатов вы ожидаете от тренировок?',
-                chat_id=message.chat.id,
-                message_id=data['info_message'],
                 reply_markup=kb.expected_results
             )
-            await PersonChars.goals.set()
 
 
 @dp.callback_query_handler(state=PersonChars.goals)
@@ -1225,11 +1158,10 @@ async def add_intensity(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['goals'] = callback.data
 
-        info_message = await callback.message.edit_text(
+        await callback.message.answer(
             'Насколько интенсивно вы готовы заниматься? Укажите интенсивность тренировок.',
             reply_markup=kb.intensity
         )
-        data['info_message'] = info_message.message_id
         await PersonChars.intensity.set()
 
 
@@ -1238,10 +1170,9 @@ async def add_goal(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['intensity'] = callback.data
 
-        info_message = await callback.message.edit_text(
+        await callback.message.answer(
             'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
         )
-        data['info_message'] = info_message.message_id
         await PersonChars.focus.set()
 
 
@@ -1249,22 +1180,17 @@ async def add_goal(callback: types.CallbackQuery, state: FSMContext):
 async def add_health_restrictions(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if len(message.text) > 100:
-            await bot.edit_message_text(
+            await message.answer(
                 'Вы ввели более 100 символов.\n\n'
-                'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+                'Хотите ли вы прокачать какие-то отдельные части тела больше? Напишите до 100 символов'
             )
         else:
             data['goals'] += '. Additionally, ' + message.text
-            await message.delete()
-            await bot.edit_message_text(
+            await message.answer(
                 'Есть ли у вас какие-нибудь противопоказания к тренировкам? '
                 'Если да, то укажите какие, напишите «нет», если их нету. '
                 '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление). '
-                'Напишите до 100 символов.',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+                'Напишите до 100 символов.'
             )
 
             await PersonChars.health_restrictions.set()
@@ -1274,23 +1200,18 @@ async def add_health_restrictions(message: types.Message, state: FSMContext):
 async def add_allergy_products(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if len(message.text) > 100:
-            await bot.edit_message_text(
+            await message.answer(
                 'Вы ввели более 100 символов.\n\n'
                 'Есть ли у вас какие-нибудь противопоказания к тренировкам? '
                 'Если да, то укажите какие, напишите «нет», если их нету. '
                 '(Например: травмы, растяжения, проблемы с позвоночником, высокое артериальное давление). '
-                'Напишите до 100 символов.',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+                'Напишите до 100 символов.'
             )
         else:
             data['health_restrictions'] = message.text
 
-            await message.delete()
-            await bot.edit_message_text(
-                'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? (Напишите до 100 символов)',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+            await message.answer(
+                'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? (Напишите до 100 символов)'
             )
 
             await PersonChars.allergy.set()
@@ -1300,21 +1221,16 @@ async def add_allergy_products(message: types.Message, state: FSMContext):
 async def add_intensity(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if len(message.text) > 100:
-            await bot.edit_message_text(
+            await message.answer(
                 'Вы ввели более 100 символов.\n\n'
                 'Есть ли у вас продукты, на которых у вас аллергия или которые вы избегаете? '
-                '(Напишите до 100 символов)',
-                chat_id=message.chat.id,
-                message_id=data['info_message']
+                '(Напишите до 100 символов)'
             )
         else:
             data['allergy'] = message.text
 
-            await message.delete()
-            await bot.edit_message_text(
-                'Выберите, сколько раз в неделю вы готовы заниматься. ',
-                chat_id=message.chat.id,
-                message_id=data['info_message'],
+            await message.answer(
+                'Выберите, сколько раз в неделю вы готовы заниматься.',
                 reply_markup=kb.times_per_week
             )
 
@@ -1335,7 +1251,7 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     await dal.User.add_attributes(state, callback.from_user.id)
     await state.set_state(BaseStates.start_workout)
 
-    await callback.message.edit_text(
+    await callback.message.answer(
         '⏳ Подождите около 2-х минут, ии-тренер составляет вам персональную тренировку.'
     )
 
