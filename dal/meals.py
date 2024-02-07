@@ -51,7 +51,7 @@ class Meals:
             """)
         meal = await cur.fetchone()
 
-        return schemas.Meal(**dict(meal)) if meal else (None, None)
+        return meal if meal else (None, None)
 
     @classmethod
     async def get_all_meals_by_user_id(cls, user_id):
@@ -75,7 +75,7 @@ class Meals:
                 """)
         meal = await cur.fetchone()
 
-        return schemas.Meal(**dict(meal)) if meal else None
+        return meal if meal else (None, None)
 
     @classmethod
     async def get_prev_meal(cls, user_id, current_day):
@@ -84,8 +84,9 @@ class Meals:
                 FROM meals
                 WHERE user_id = {user_id}
                 AND day < {current_day}
-                ORDER BY day ASC
+                ORDER BY day DESC
+                LIMIT 1
                 """)
         meal = await cur.fetchone()
 
-        return schemas.Meal(**dict(meal)) if meal else None
+        return meal if meal else (None, None)

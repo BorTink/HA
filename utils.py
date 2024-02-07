@@ -101,18 +101,12 @@ async def proccess_meal_plan_prompt_next_week(user_id, week):
 
     meal_plan = meal_plan.split('----------')
 
-    for i in range(meal_plan):
+    for i in range(len(meal_plan)):
         await dal.Meals.insert_meal(
             user_id=int(user_id),
             day=i+1,
             meal_plan=meal_plan[i]
         )
-
-    await dal.Meals.insert_meal(
-        user_id=int(user_id),
-        day=1,
-        meal_plan=meal_plan
-    )
 
     return meal_plan[0]
 
@@ -515,8 +509,8 @@ async def get_training_markup(user_id, day, ):
     return reply_markup
 
 
-async def get_meal_markup(user_id, day, ):
-    next_meal, _, _ = await dal.Meals.get_next_meal(
+async def get_meal_markup(user_id, day):
+    next_meal, _ = await dal.Meals.get_next_meal(
         user_id=user_id,
         current_day=day
     )
@@ -526,7 +520,7 @@ async def get_meal_markup(user_id, day, ):
         reply_markup = kb.meal_plan_without_next
 
     else:
-        prev_meal, _, _ = await dal.Meals.get_prev_meal(
+        prev_meal, _ = await dal.Meals.get_prev_meal(
             user_id=user_id,
             current_day=day
         )

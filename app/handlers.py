@@ -1,6 +1,5 @@
 import asyncio
 import os
-import pathlib
 
 from aiogram import Dispatcher, types, Bot
 from aiogram.dispatcher import FSMContext
@@ -498,7 +497,13 @@ async def add_weight_callback(callback: types.CallbackQuery, state: FSMContext):
         data['exercises'] = ' кг'.join(data['workout']).replace('\n\n', '\n').split('\n')
         data['exercises'] = [line for line in data['exercises'] if len(line) > 5 and ' кг' in line]
 
-        data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+        exercise_line = data['exercises'][data['weight_index']]
+        exercise_line_list = exercise_line.split(' кг')
+        part_before_kg = exercise_line_list[0].split(' ')
+        exercise_line = ' '.join(part_before_kg[:-1]) + f' <b>[ {part_before_kg[-1]} ]</b>' + ' кг'
+        exercise_line += exercise_line_list[1]
+
+        data['new_text'] = '<b>Введите новый вес:</b> \n' + exercise_line
         temp_message = await callback.message.answer(
             data['new_text'],
             reply_markup=kb.insert_weight,
@@ -542,7 +547,13 @@ async def add_weight_message(message: types.Message, state: FSMContext):
             await process_workout(workout_in_process, data, state, message, kb)
 
             if await state.get_state() != BaseStates.show_trainings:
-                data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+                exercise_line = data['exercises'][data['weight_index']]
+                exercise_line_list = exercise_line.split(' кг')
+                part_before_kg = exercise_line_list[0].split(' ')
+                exercise_line = ' '.join(part_before_kg[:-1]) + f' <b>[ {part_before_kg[-1]} ]</b>' + ' кг'
+                exercise_line += exercise_line_list[1]
+
+                data['new_text'] = '<b>Введите новый вес:</b> \n' + exercise_line
                 temp_message = await bot.edit_message_text(
                     data['new_text'],
                     chat_id=message.chat.id,
@@ -570,7 +581,13 @@ async def next_exercise(callback: types.CallbackQuery, state: FSMContext):
 
         if await state.get_state() != BaseStates.show_trainings:
             try:
-                data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+                exercise_line = data['exercises'][data['weight_index']]
+                exercise_line_list = exercise_line.split(' кг')
+                part_before_kg = exercise_line_list[0].split(' ')
+                exercise_line = ' '.join(part_before_kg[:-1]) + f' <b>[ {part_before_kg[-1]} ]</b>' + ' кг'
+                exercise_line += exercise_line_list[1]
+
+                data['new_text'] = '<b>Введите новый вес:</b> \n' + exercise_line
                 temp_message = await callback.message.edit_text(
                     data['new_text'],
                     reply_markup=kb.insert_weight,
@@ -600,7 +617,13 @@ async def prev_exercise(callback: types.CallbackQuery, state: FSMContext):
         )
 
         if await state.get_state() != BaseStates.show_trainings:
-            data['new_text'] = 'Введите новый вес: \n' + data['exercises'][data['weight_index']]
+            exercise_line = data['exercises'][data['weight_index']]
+            exercise_line_list = exercise_line.split(' кг')
+            part_before_kg = exercise_line_list[0].split(' ')
+            exercise_line = ' '.join(part_before_kg[:-1]) + f' <b>[ {part_before_kg[-1]} ]</b>' + ' кг'
+            exercise_line += exercise_line_list[1]
+
+            data['new_text'] = '<b>Введите новый вес:</b> \n' + exercise_line
             temp_message = await callback.message.edit_text(
                 data['new_text'],
                 reply_markup=kb.insert_weight,
@@ -751,14 +774,18 @@ async def do_not_leave_workout(callback: types.CallbackQuery, state: FSMContext)
 async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(BaseStates.meals)
 
-    meal = await dal.Meals.get_meal_by_day(callback.from_user.id, 1)
+    meal, day = await dal.Meals.get_meal_by_day(callback.from_user.id, 1)
     week = await dal.User.select_week(callback.from_user.id)
+
+    async with state.proxy() as data:
+        data['meal_day'] = 1
+
     if meal:
         if week == 0:
             reply_markup = kb.meal_plan_trial
         else:
             reply_markup = kb.meal_plan_without_prev
-        meal_plan = meal.meal_plan
+        meal_plan = meal
         await callback.message.answer(
             meal_plan,
             reply_markup=reply_markup,
@@ -788,7 +815,6 @@ async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
                 '🍏 Ваш план питания составлен! \n\n'
                 'Старайтесь следовать инструкциям!'
             )
-
             await callback.message.answer(
                 meal_plan,
                 reply_markup=kb.meal_plan_trial,
@@ -802,10 +828,10 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
         if callback.data == 'next_meal_day':
             meal, new_day = await dal.Meals.get_next_meal(
                 user_id=callback.from_user.id,
-                current_day=data['day']
+                current_day=data['meal_day']
             )
             if meal:
-                data['day'] = new_day
+                data['meal_day'] = new_day
                 data['meal'] = meal
 
             else:
@@ -813,16 +839,16 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                     user_id=callback.from_user.id,
                     day=1
                 )
-                data['day'] = 1
+                data['meal_day'] = 1
                 data['workout'] = meal
 
         elif callback.data == 'prev_meal_day':
             meal, new_day = await dal.Meals.get_prev_meal(
                 user_id=callback.from_user.id,
-                current_day=data['day']
+                current_day=data['meal_day']
             )
             if meal:
-                data['day'] = new_day
+                data['meal_day'] = new_day
                 data['meal'] = meal
 
             else:
@@ -830,12 +856,12 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
                     user_id=callback.from_user.id,
                     current_day=1000000
                 )
-                data['day'] = new_day
+                data['meal_day'] = new_day
                 data['meal'] = meal
 
-        reply_markup = await get_meal_markup(callback.from_user.id, data['day'])
+        reply_markup = await get_meal_markup(callback.from_user.id, data['meal_day'])
         await callback.message.edit_text(
-            f'<b>День {data["day"]}</b>\n' + meal,
+            f'<b>День {data["meal_day"]}</b>\n' + meal,
             reply_markup=reply_markup,
             parse_mode='HTML'
         )

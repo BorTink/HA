@@ -285,9 +285,9 @@ async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week)
     else:
         prompt_text = await fill_meal_plan_prompt_text_next_week(prompt_data, week)
 
-    if 'workout_gpt' not in locals():
-        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
-        await workout_gpt.create_thread()
+    if 'meal_gpt' not in locals():
+        meal_gpt = ChatGPT(os.getenv(assistant_id_tag))
+        await meal_gpt.create_thread()
 
     await meal_gpt.create_thread()
 

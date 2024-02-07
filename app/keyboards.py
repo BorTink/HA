@@ -125,7 +125,7 @@ meal_plan_trial.add(meal_plan_trial_3)
 meal_plan = InlineKeyboardMarkup()
 meal_plan_1 = InlineKeyboardButton('Предыдущий день', callback_data='prev_meal_day')
 meal_plan_2 = InlineKeyboardButton('Следующий день', callback_data='next_meal_day')
-meal_plan.add(meal_plan_1, meal_plan_2).add(meal_plan_1)
+meal_plan.add(meal_plan_1, meal_plan_2).add(meal_plan_trial_3)
 
 meal_plan_without_prev = InlineKeyboardMarkup()
 meal_plan_without_prev_1 = InlineKeyboardButton('-', callback_data='-')
