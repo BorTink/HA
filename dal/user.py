@@ -221,7 +221,7 @@ class User:
         await cur.execute(f"""
                     UPDATE users
                     SET subscription_type = {value},
-                    subscribed_date = now(),
+                    subscribed_date = DATETIME('now'),
                     weeks_left = {3 if value == 1 else 8 if value == 2 else 0}
                     WHERE tg_id = {user_id}
                 """)
