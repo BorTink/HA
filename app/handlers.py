@@ -868,7 +868,7 @@ async def subscribe(callback: types.CallbackQuery, state: FSMContext):
 
     if callback.data == 'trainings_and_food':
         await state.set_state(SubStates.trainings_and_food)
-        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц (Тренировки+питание)', amount=199 * 100)
+        NEW_PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=199 * 100)
         amount = {'value': '199.00', 'currency': 'RUB'}
         description = 'Подписка на 1 месяц (Тренировки+питание)'
         start_parameter = 'one-month-subscription'
