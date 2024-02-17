@@ -8,11 +8,11 @@ import app.keyboards as kb
 import dal
 
 
-async def process_prompt(user_id, client_changes=None):
+async def process_prompt(user_id, client_changes=None, remake=False):
     logger.info(f'Отправляется промпт от пользователя с user_id = {user_id}')
     data = await dal.User.select_attributes(user_id)
 
-    program, training = await fill_prompt(data, client_changes)
+    program, training = await fill_prompt(data, client_changes, remake)
     await dal.Trainings.remove_prev_trainings(
         user_id=int(user_id)
     )
@@ -111,7 +111,7 @@ async def proccess_meal_plan_prompt_next_week(user_id, week):
     return meal_plan[0]
 
 
-async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=None):
+async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=None, remake=False):
     async def analyse_training(training):
         training = training.replace('"', '').replace("""'""", '')
         training = replace_nth_occ(training, '**', '</b>', 2)
@@ -182,7 +182,7 @@ async def process_prompt_next_week(user_id, client_edits_next_week=None, demo=No
     else:
         week = await dal.User.select_week(int(user_id))
 
-        trainings = await fill_prompt_next_week(data, trainings_prev_week, week, client_edits_next_week)
+        trainings = await fill_prompt_next_week(data, trainings_prev_week, week, client_edits_next_week, remake)
         await dal.Trainings.remove_prev_trainings(
             user_id=int(user_id)
         )

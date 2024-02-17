@@ -14,7 +14,8 @@ from gpt.prompts import fill_man_prompt, fill_woman_prompt, \
     fill_prompt_end_of_trial,\
     fill_man_prompt_demo, fill_woman_prompt_demo, \
     fill_man_prompt_next_week, fill_woman_prompt_next_week, \
-    fill_meal_plan_prompt_text_trial, fill_meal_plan_prompt_text_next_week
+    fill_meal_plan_prompt_text_trial, fill_meal_plan_prompt_text_next_week, \
+    fill_rebuild_training, fill_rebuild_first_training
 
 load_dotenv(str(pathlib.Path(__file__).parent.parent) + '/app/.env')
 openai.api_key = os.getenv('GPT_API_TOKEN')
@@ -111,17 +112,22 @@ class ChatGPT:
         return response["choices"][0]['message']['content']
 
 
-async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
-    global workout_gpt
-
+async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None, remake=False):
     if prompt_data.gender == 'Женский':
         prompt_text = await fill_woman_prompt(prompt_data, client_changes)
-        workout_gpt = ChatGPT(os.getenv('WOMAN_ASSISTANT_ID'))
+        assistant_id_tag = 'WOMAN_ASSISTANT_ID'
     else:
         prompt_text = await fill_man_prompt(prompt_data, client_changes)
-        workout_gpt = ChatGPT(os.getenv('MAN_ASSISTANT_ID'))
+        assistant_id_tag = 'MAN_ASSISTANT_ID'
 
-    await workout_gpt.create_thread()
+    if 'workout_gpt' not in locals() or not remake:
+        global workout_gpt
+
+        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
+        await workout_gpt.create_thread()
+
+    if remake:
+        prompt_text = await fill_rebuild_first_training(client_changes)
 
     await workout_gpt.add_message(prompt_text)
 
@@ -136,9 +142,14 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None):
     messages = await workout_gpt.get_all_messages()
     training = messages.data[0].content[0].text.value
 
+    print(training)
+
     if 'Generate a program' in training:
         logger.error('Произошел баг с вставкой промпта вместо ответа')
         raise Exception
+
+    if remake:
+        return None, training
 
     training = training.split('\n----------\n')
     program = training[0]
@@ -183,6 +194,8 @@ async def fill_prompt_demo(
     messages = await workout_gpt.get_all_messages()
     training = messages.data[0].content[0].text.value
 
+    print(training)
+
     return training
 
 
@@ -190,10 +203,13 @@ async def fill_prompt_next_week(
         prompt_data: schemas.PromptData,
         trainings_prev_week,
         week,
-        client_edits_next_week=None
+        client_edits_next_week=None,
+        remake=False
 ):
     if prompt_data.gender == 'Женский':
-        if week == 1:
+        if remake:
+            prompt_text = await fill_rebuild_training(client_edits_next_week)
+        elif week == 1:
             prompt_text = await fill_prompt_end_of_trial()
         else:
             prompt_text = await fill_woman_prompt_next_week(
@@ -203,7 +219,9 @@ async def fill_prompt_next_week(
         assistant_id_tag = 'WOMAN_ASSISTANT_ID'
 
     else:
-        if week == 1:
+        if remake:
+            prompt_text = await fill_rebuild_training(client_edits_next_week)
+        elif week == 1:
             prompt_text = await fill_prompt_end_of_trial()
         else:
             prompt_text = await fill_man_prompt_next_week(
@@ -228,6 +246,8 @@ async def fill_prompt_next_week(
 
     messages = await workout_gpt.get_all_messages()
     gpt_timetable = messages.data[0].content[0].text.value
+
+    print(gpt_timetable)
 
     timetable_days = gpt_timetable.split('День')
     training_days = []

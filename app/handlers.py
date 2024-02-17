@@ -305,21 +305,10 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
         )
 
 
-@dp.callback_query_handler(state=BaseStates.show_trainings, text='rebuild_workouts')
+@dp.callback_query_handler(state='*', text='rebuild_workouts')
 async def ask_client_for_changes(callback: types.CallbackQuery, state: FSMContext):
     user = await dal.User.select_attributes(callback.from_user.id)
-    if callback.from_user.id == 913925619:
-        if user.rebuilt > 31:
-            await callback.answer(
-                'Вы уже 30 раз пересобрали тренировку на неделю'
-            )
-        else:
-            await callback.message.answer(
-                'Введите что вы хотите изменить до 100 символов. '
-                '(Тренировку можно пересобрать 1 раз в пробной версии, может добавить нужные упражнения или что-то убрать)'
-            )
-            await state.set_state(BaseStates.rebuild_workouts)
-    elif user.rebuilt == 1:
+    if user.rebuilt == 1:
         await callback.answer(
             'Вы уже пересобирали тренировку на неделю'
         )
@@ -341,14 +330,23 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
     await state.set_state(BaseStates.show_trainings)
 
     await dal.User.increase_rebuilt_param(message.from_user.id)
+    user = await dal.User.select_attributes(message.from_user.id)
 
     attempts = 0
     while attempts < 3:
         try:
-            await process_prompt_next_week(
-                user_id=message.from_user.id,
-                client_edits_next_week=message.text
-            )
+            if user.week == 0:
+                await process_prompt(
+                    user_id=message.from_user.id,
+                    client_changes=message.text,
+                    remake=True
+                )
+            else:
+                await process_prompt_next_week(
+                    user_id=message.from_user.id,
+                    client_edits_next_week=message.text,
+                    remake=True
+                )
             break
         except Exception as exc:
             logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
@@ -369,12 +367,19 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
         data['workout'] = training
 
     await message.answer(
-        '💡Если нажать на выделенные слова, вы перейдете на сайт с инструкцией к упражнению'
+        'Ваши тренировки были пересобраны'
     )
+
+    await asyncio.sleep(3)
+
+    if user.week == 0:
+        reply_markup = kb.insert_weights_in_workout
+    else:
+        reply_markup = await get_training_markup(message.from_user.id, data['day'])
 
     await message.answer(
         f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
-        reply_markup=kb.trainings_tab,
+        reply_markup=reply_markup,
         parse_mode='HTML'
     )
 
@@ -1063,19 +1068,18 @@ async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=PersonChars.max_results)
 async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        if callback.data == 'yes':
-            info_message = await callback.message.answer(
-                'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
-            )
-            await PersonChars.bench_results.set()
+    if callback.data == 'yes':
+        await callback.message.answer(
+            'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
+        )
+        await PersonChars.bench_results.set()
 
-        if callback.data == 'no':
-            info_message = await callback.message.answer(
-                'Каких результатов вы ожидаете от тренировок?',
-                reply_markup=kb.expected_results
-            )
-            await PersonChars.goals.set()
+    if callback.data == 'no':
+        await callback.message.answer(
+            'Каких результатов вы ожидаете от тренировок?',
+            reply_markup=kb.expected_results
+        )
+        await PersonChars.goals.set()
 
 
 @dp.message_handler(state=PersonChars.bench_results)
@@ -1119,6 +1123,7 @@ async def add_squats_results(message: types.Message, state: FSMContext):
                 'Каких результатов вы ожидаете от тренировок?',
                 reply_markup=kb.expected_results
             )
+            await PersonChars.goals.set()
 
 
 @dp.callback_query_handler(state=PersonChars.goals)

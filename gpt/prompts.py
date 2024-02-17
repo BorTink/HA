@@ -27,7 +27,7 @@ Split your workout plan and the first training by "----------".
 Затем дай мне первый тренировочный день для демонстрации в формате:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 
 Напиши числом, через сколько дней следующая тренировка.
@@ -77,7 +77,7 @@ Split your workout plan and the first training by "----------".
 Затем дай мне первый тренировочный день для демонстрации в формате:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 
 Напиши числом, через сколько дней следующая тренировка.
@@ -104,14 +104,14 @@ async def fill_man_prompt_demo(
     prompt_text = f"""
 I completed my 1st workout that you gave to me. My results: {workout_plan}, my comment: {client_edits_next_week}
 
-Give me demonstration of one training of 7-9 weeks. It should constist of different exersises, sets and drop sets.
+Give me demonstration of one training of 7-9 weeks. It should consist of different exercises, sets and drop sets.
 Don't write anything else except for the training. You must follow all instructions provided in my previous messages.
 Don't include more than 6 exercises in one training.
 
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 """
     return prompt_text
@@ -130,7 +130,7 @@ Don't include more than 6 exercises in one training.
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 """
     return prompt_text
@@ -146,7 +146,43 @@ Don't include more than 6 exercises in one training.
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+...
+"""
+
+    return prompt_text
+
+
+async def fill_rebuild_training(
+        client_changes=None
+):
+    prompt_text = f"""
+You made me a bad workout week. Remake it taken these comments into account: {client_changes}. 
+Don't write anything else except for the trainings. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
+
+Формат вывода тренировки:
+День 1:  (тип тренировки) | Неделя 1
+
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+...
+"""
+
+    return prompt_text
+
+
+async def fill_rebuild_first_training(
+        client_changes=None
+):
+    prompt_text = f"""
+You made me a bad first workout day. Remake it taken these comments into account: {client_changes}. 
+Don't write anything else except for the trainings. You must follow all instructions provided in my previous messages.
+Don't include more than 6 exercises in one training.
+
+Формат вывода тренировки:
+День 1:  (тип тренировки) | Неделя 1
+
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 """
 
@@ -167,7 +203,7 @@ Don't include more than 6 exercises in one training.
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 """
     return prompt_text
@@ -187,7 +223,7 @@ Don't include more than 6 exercises in one training.
 Формат вывода тренировки:
 День 1:  (тип тренировки) | Неделя 1
 
--  упражнение - 140 кг (собственный вес) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
+-  упражнение - 140 кг (или собственный вес, если такое упражнение) - 4 подхода - 5 повторений - отдых между повторениями 2.5 минуты
 ...
 """
     return prompt_text

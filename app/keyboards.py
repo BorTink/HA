@@ -88,8 +88,10 @@ trainings_tab_2 = InlineKeyboardButton('Начать активную трени
 trainings_tab_3 = InlineKeyboardButton('Предыдущая тренировка', callback_data='prev_workout')
 trainings_tab_4 = InlineKeyboardButton('Следующая тренировка', callback_data='next_workout')
 trainings_tab_5 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')
-trainings_tab.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_4)
+trainings_tab_6 = InlineKeyboardButton('Пересобрать тренировку', callback_data='rebuild_workouts')
+trainings_tab.add(trainings_tab_6)
 trainings_tab.add(trainings_tab_5)
+trainings_tab.add(trainings_tab_1).add(trainings_tab_2).add(trainings_tab_3, trainings_tab_4)
 
 trainings_tab_without_prev = InlineKeyboardMarkup(resize_keyboard=True)
 trainings_tab_without_prev_3 = InlineKeyboardButton('-', callback_data='-')
@@ -110,8 +112,12 @@ insert_weights_in_workout = InlineKeyboardMarkup(resize_keyboard=True)
 insert_weights_in_workout_1 = InlineKeyboardButton('Ввести вес', callback_data='add_weight')
 insert_weights_in_workout_2 = InlineKeyboardButton('Завершить тренировку', callback_data='complete_workout')
 insert_weights_in_workout_3 = InlineKeyboardButton('🥑 План питания', callback_data='meal_plan')
-insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)
+insert_weights_in_workout_4 = InlineKeyboardButton('Пересобрать тренировку', callback_data='rebuild_workouts')
+insert_weights_in_workout.add(insert_weights_in_workout_4)
 insert_weights_in_workout.add(insert_weights_in_workout_3)
+insert_weights_in_workout.add(insert_weights_in_workout_1, insert_weights_in_workout_2)
+
+
 
 insert_weight = InlineKeyboardMarkup(resize_keyboard=True)
 insert_weight_1 = InlineKeyboardButton('Перейти к следующему упражнению', callback_data='next_exercise')
