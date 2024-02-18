@@ -31,9 +31,6 @@ PRICE = types.LabeledPrice(label='Подписка на 1 месяц', amount=39
 
 @dp.message_handler(state='*', commands=['start'])
 async def start(message: types.Message, state: FSMContext):
-    if state:
-        await state.finish()
-
     await dal.Starts.update_starts(message.from_user.id)
     logger.info('start')
     user = await dal.User.select_attributes(message.from_user.id)
@@ -66,9 +63,9 @@ async def start(message: types.Message, state: FSMContext):
 async def go_to_assistant_training(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(Admin.assistant_training)
     global this_gpt
-    this_gpt = ChatGPT(os.getenv('ASSISTANT_ID'))
+    this_gpt = ChatGPT(os.getenv('ASSISTANT_ID'), None)
     await this_gpt.create_thread()
-    await callback.message.edit_text('Вы перешли в раздел тестирования ассистента.')
+    await callback.message.answer('Вы перешли в раздел тестирования ассистента.')
     await asyncio.sleep(0.5)
     await callback.message.answer('Для перезагрузки ассистента напишите */start* и зайдите сюда заново',
                                   parse_mode='Markdown')
@@ -127,9 +124,6 @@ async def assistant_message(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state='*', text='Вернуться в главное меню')
 async def back_to_menu(message: types.Message, state: FSMContext):
-    if state:
-        await state.finish()
-
     await message.answer(
         'Выберите действие',
         reply_markup=kb.main
@@ -150,8 +144,6 @@ async def support(message: types.Message, state: FSMContext):
 async def tech_support(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Со всеми вопросами пишите сюда https://t.me/sergey_akhapkin1703')
 
-    await state.finish()
-
     await callback.message.answer(
         'Выберите действие',
         reply_markup=kb.main
@@ -169,8 +161,6 @@ async def write_review(message: types.Message, state: FSMContext):
     await dal.Reviews.add_review(message.from_user.id, message.text)
 
     await message.answer('Спасибо за ваш отзыв!')
-    await state.finish()
-
     await message.answer(
         'Выберите действие',
         reply_markup=kb.main
@@ -249,9 +239,6 @@ async def show_timetable(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=BaseStates.end_of_trial, text='subscribe_later')
 async def back_to_menu(message: types.Message, state: FSMContext):
-    if state:
-        await state.finish()
-
     await message.answer(
         'Выберите действие',
         reply_markup=kb.main
@@ -332,25 +319,28 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
     await dal.User.increase_rebuilt_param(message.from_user.id)
     user = await dal.User.select_attributes(message.from_user.id)
 
-    attempts = 0
-    while attempts < 3:
-        try:
-            if user.week == 0:
-                await process_prompt(
-                    user_id=message.from_user.id,
-                    client_changes=message.text,
-                    remake=True
-                )
-            else:
-                await process_prompt_next_week(
-                    user_id=message.from_user.id,
-                    client_edits_next_week=message.text,
-                    remake=True
-                )
-            break
-        except Exception as exc:
-            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
-            attempts += 1
+    async with state.proxy() as data:
+        attempts = 0
+        while attempts < 3:
+            try:
+                if user.week == 0:
+                    await process_prompt(
+                        user_id=message.from_user.id,
+                        client_changes=message.text,
+                        data=data,
+                        remake=True
+                    )
+                else:
+                    await process_prompt_next_week(
+                        user_id=message.from_user.id,
+                        client_edits_next_week=message.text,
+                        data=data,
+                        remake=True
+                    )
+                break
+            except Exception as exc:
+                logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+                attempts += 1
 
     await dal.Trainings.update_active_training_by_day(
         user_id=message.from_user.id,
@@ -374,8 +364,10 @@ async def rebuild_workouts(message: types.Message, state: FSMContext):
 
     if user.week == 0:
         reply_markup = kb.insert_weights_in_workout
+        await state.set_state(BaseStates.start_workout)
     else:
         reply_markup = await get_training_markup(message.from_user.id, data['day'])
+        await state.set_state(BaseStates.show_trainings)
 
     await message.answer(
         f'<b>День {data["day"]}</b>\n' + (f'<b>(АКТИВНАЯ ТРЕНИРОВКА)</b>\n' if active else '') + training,
@@ -615,7 +607,7 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
         if len(message.text) > 100:
             await bot.delete_message(message.chat.id, message.message_id)
             temp_message = await message.answer('Ваши коррективы на тренировки должны быть меньше 100 символов',
-                                                       message.chat.id, data['temp_message'])
+                                                message.chat.id, data['temp_message'])
             data['temp_message'] = temp_message.message_id
         else:
             await message.answer('⏳Ваши правки будут учтены, создаются тренировки на следующую неделю')
@@ -624,7 +616,8 @@ async def get_end_of_week_changes_from_user(message: types.Message, state: FSMCo
             while attempts < 3:
                 try:
                     await process_prompt_next_week(
-                        user_id=message.from_user.id
+                        user_id=message.from_user.id,
+                        data=data
                     )
                     break
                 except Exception as exc:
@@ -702,8 +695,9 @@ async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
         await callback.message.answer(
             '⏳Ваш план питания составляется, подождите (не более 2х минут)…'
         )
+
         if week == 0:
-            meal_plan = await proccess_meal_plan_prompt(callback.from_user.id)
+            meal_plan = await proccess_meal_plan_prompt(callback.from_user.id, data)
 
             await callback.message.answer(
                 '🍏 Ваш план питания составлен! \n\n'
@@ -716,7 +710,8 @@ async def go_to_meal_plan(callback: types.CallbackQuery, state: FSMContext):
                 parse_mode='HTML'
             )
         else:
-            meal_plan = await proccess_meal_plan_prompt_next_week(callback.from_user.id, week)
+            async with state.proxy() as data:
+                meal_plan = await proccess_meal_plan_prompt_next_week(callback.from_user.id, week, data)
 
             await callback.message.answer(
                 '🍏 Ваш план питания составлен! \n\n'
@@ -778,7 +773,8 @@ async def switch_days(callback: types.CallbackQuery, state: FSMContext):
 async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['message'] = callback.message.message_id
-        data['workout'], data['day'], in_progress = await dal.Trainings.get_active_training_by_user_id(callback.from_user.id)
+        data['workout'], data['day'], in_progress = await dal.Trainings.get_active_training_by_user_id(
+            callback.from_user.id)
 
         if in_progress:
             await state.set_state(BaseStates.start_workout)
@@ -819,16 +815,18 @@ async def go_to_workout(callback: types.CallbackQuery, state: FSMContext):
 
     attempts = 0
     training = None
-    while attempts < 3:
-        try:
-            training = await process_prompt_next_week(
-                user_id=callback.from_user.id,
-                demo=True
-            )
-            break
-        except Exception as exc:
-            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
-            attempts += 1
+    async with state.proxy() as data:
+        while attempts < 3:
+            try:
+                training = await process_prompt_next_week(
+                    user_id=callback.from_user.id,
+                    data=data,
+                    demo=True
+                )
+                break
+            except Exception as exc:
+                logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+                attempts += 1
 
     if training is None:
         await callback.message.answer(f'При создании тренировки произошла ошибка. '
@@ -953,6 +951,7 @@ async def successful_payment(message: types.Message, state: FSMContext):
                                         '(до 100 символов)')
     async with state.proxy() as data:
         data['temp_message'] = temp_message.message_id
+
 
 # ----- АНКЕТА ПОЛЬЗОВАТЕЛЯ ---------
 
@@ -1229,23 +1228,26 @@ async def add_times_per_week(callback: types.CallbackQuery, state: FSMContext):
     )
 
     attempts = 0
-    program = None
-    while attempts < 3:
-        try:
-            program, final_training = await process_prompt(
-                user_id=callback.from_user.id
-            )
-            if 'ПМ' in final_training or '%' in final_training:
-                raise Exception
-            break
-        except Exception as exc:
-            logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
-            attempts += 1
-            if attempts == 3:
-                await callback.message.answer(
-                    'При создании тренировки произошла ошибка. Введите команду */start*, чтобы заново пройти анкету.',
-                    parse_mode='Markdown'
+    async with state.proxy() as data:
+        while attempts < 3:
+            try:
+                program, final_training = await process_prompt(
+                    user_id=callback.from_user.id,
+                    data=data
                 )
+                if 'ПМ' in final_training or '%' in final_training:
+                    raise Exception
+                break
+            except Exception as exc:
+                logger.error(f'При отправке и обработке промпта произошла ошибка - {exc}')
+                attempts += 1
+                data['thread_id'] = None
+                if attempts == 3:
+                    await callback.message.answer(
+                        'При создании тренировки произошла ошибка. '
+                        'Введите команду */start*, чтобы заново пройти анкету.',
+                        parse_mode='Markdown'
+                    )
 
     await dal.Trainings.update_active_training_by_day(
         user_id=callback.from_user.id,

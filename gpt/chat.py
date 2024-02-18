@@ -22,7 +22,7 @@ openai.api_key = os.getenv('GPT_API_TOKEN')
 
 
 class ChatGPT:
-    def __init__(self, assistant_id):
+    def __init__(self, assistant_id, thread_id):
         self.starting_message = {"role": "system", "content":
             """
             You are a fitness trainer capable of creating a workout program in gym.
@@ -33,15 +33,16 @@ class ChatGPT:
         ]
         self.client = openai.OpenAI(api_key=os.getenv('GPT_API_TOKEN'))
         self.assistant_id = assistant_id
-        self.thread = None
+        self.thread_id = thread_id
         self.run = None
 
     async def create_thread(self):
-        self.thread = self.client.beta.threads.create()
+        self.thread_id = self.client.beta.threads.create().id
+        return self.thread_id
 
     async def add_message(self, message):
         message = self.client.beta.threads.messages.create(
-            thread_id=self.thread.id,
+            thread_id=self.thread_id,
             role='user',
             content=message
         )
@@ -49,21 +50,21 @@ class ChatGPT:
 
     async def create_run(self):
         self.run = self.client.beta.threads.runs.create(
-            thread_id=self.thread.id,
+            thread_id=self.thread_id,
             assistant_id=self.assistant_id
         )
         return self.run
 
     async def get_run_status(self):
         status = self.client.beta.threads.runs.retrieve(
-            thread_id=self.thread.id,
+            thread_id=self.thread_id,
             run_id=self.run.id
         )
         return status
 
     async def get_all_messages(self):
         messages = self.client.beta.threads.messages.list(
-            thread_id=self.thread.id
+            thread_id=self.thread_id
         )
         return messages
 
@@ -112,7 +113,10 @@ class ChatGPT:
         return response["choices"][0]['message']['content']
 
 
-async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None, remake=False):
+async def fill_prompt(prompt_data: schemas.PromptData,
+                      data,
+                      client_changes=None,
+                      remake=False):
     if prompt_data.gender == 'Женский':
         prompt_text = await fill_woman_prompt(prompt_data, client_changes)
         assistant_id_tag = 'WOMAN_ASSISTANT_ID'
@@ -120,11 +124,7 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None, rema
         prompt_text = await fill_man_prompt(prompt_data, client_changes)
         assistant_id_tag = 'MAN_ASSISTANT_ID'
 
-    if 'workout_gpt' not in locals() or not remake:
-        global workout_gpt
-
-        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
-        await workout_gpt.create_thread()
+    await create_workout_gpt(assistant_id_tag=assistant_id_tag, data=data)
 
     if remake:
         prompt_text = await fill_rebuild_first_training(client_changes)
@@ -161,6 +161,7 @@ async def fill_prompt(prompt_data: schemas.PromptData, client_changes=None, rema
 async def fill_prompt_demo(
         prompt_data: schemas.PromptData,
         trainings_prev_week,
+        data,
         client_edits_next_week=None
 ):
     if prompt_data.gender == 'Женский':
@@ -177,9 +178,7 @@ async def fill_prompt_demo(
 
         assistant_id_tag = 'MAN_ASSISTANT_ID'
 
-    if 'workout_gpt' not in locals():
-        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
-        await workout_gpt.create_thread()
+    await create_workout_gpt(assistant_id_tag=assistant_id_tag, data=data)
 
     await workout_gpt.add_message(prompt_text)
 
@@ -203,6 +202,7 @@ async def fill_prompt_next_week(
         prompt_data: schemas.PromptData,
         trainings_prev_week,
         week,
+        data,
         client_edits_next_week=None,
         remake=False
 ):
@@ -230,9 +230,7 @@ async def fill_prompt_next_week(
 
         assistant_id_tag = 'MAN_ASSISTANT_ID'
 
-    if 'workout_gpt' not in locals():
-        workout_gpt = ChatGPT(os.getenv(assistant_id_tag))
-        await workout_gpt.create_thread()
+    await create_workout_gpt(assistant_id_tag=assistant_id_tag, data=data)
 
     await workout_gpt.add_message(prompt_text)
 
@@ -266,17 +264,17 @@ async def fill_prompt_next_week(
     return training_days
 
 
-async def fill_meal_plan_prompt(prompt_data: schemas.PromptData):
+async def fill_meal_plan_prompt(prompt_data: schemas.PromptData, data):
     global meal_gpt
 
     if prompt_data.gender == 'Женский':
         prompt_text = await fill_meal_plan_prompt_text_trial(prompt_data)
-        meal_gpt = ChatGPT(os.getenv('WOMAN_ASSISTANT_ID'))
+        assistant_id_tag = 'WOMAN_ASSISTANT_ID'
     else:
         prompt_text = await fill_meal_plan_prompt_text_trial(prompt_data)
-        meal_gpt = ChatGPT(os.getenv('MAN_ASSISTANT_ID'))
+        assistant_id_tag = 'MAN_ASSISTANT_ID'
 
-    await meal_gpt.create_thread()
+    await create_meal_gpt(assistant_id_tag=assistant_id_tag, data=data)
 
     await meal_gpt.add_message(prompt_text)
 
@@ -294,7 +292,7 @@ async def fill_meal_plan_prompt(prompt_data: schemas.PromptData):
     return meal_plan
 
 
-async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week):
+async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week, data):
     if prompt_data.gender == 'Женский':
         assistant_id_tag = 'WOMAN_ASSISTANT_ID'
     else:
@@ -305,11 +303,7 @@ async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week)
     else:
         prompt_text = await fill_meal_plan_prompt_text_next_week(prompt_data, week)
 
-    if 'meal_gpt' not in locals():
-        meal_gpt = ChatGPT(os.getenv(assistant_id_tag))
-        await meal_gpt.create_thread()
-
-    await meal_gpt.create_thread()
+    await create_meal_gpt(assistant_id_tag=assistant_id_tag, data=data)
 
     await meal_gpt.add_message(prompt_text)
 
@@ -325,3 +319,27 @@ async def fill_meal_plan_prompt_next_week(prompt_data: schemas.PromptData, week)
     meal_plan = messages.data[0].content[0].text.value
 
     return meal_plan
+
+
+async def create_meal_gpt(assistant_id_tag, data):
+    if 'meal_gpt' not in locals():
+        global meal_gpt
+
+        if 'thread_id' not in data.keys():
+            data['thread_id'] = None
+
+        meal_gpt = ChatGPT(os.getenv(assistant_id_tag), data['thread_id'])
+        if not data['thread_id']:
+            data['thread_id'] = await meal_gpt.create_thread()
+
+
+async def create_workout_gpt(assistant_id_tag, data):
+    if 'workout_gpt' not in locals():
+        global workout_gpt
+
+        if 'thread_id' not in data.keys():
+            data['thread_id'] = None
+
+        workout_gpt = ChatGPT(os.getenv(assistant_id_tag), data['thread_id'])
+        if not data['thread_id']:
+            data['thread_id'] = await workout_gpt.create_thread()
