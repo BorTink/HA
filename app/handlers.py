@@ -1051,78 +1051,12 @@ async def add_weight(message: types.Message, state: FSMContext):
 async def add_gym_experience(callback: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['gym_experience'] = callback.data
-    if callback.data in ['medium', 'experienced']:
-        await callback.message.answer(
-            'Знаете ли вы свои максимальные показатели веса в жиме лежа, становой тяге и приседаниях со штангой?',
-            reply_markup=kb.max_results
-        )
-        await PersonChars.max_results.set()
-    else:
-        await callback.message.answer(
-            'Каких результатов вы ожидаете от тренировок?',
-            reply_markup=kb.expected_results
-        )
-        await PersonChars.goals.set()
 
-
-@dp.callback_query_handler(state=PersonChars.max_results)
-async def ask_max_results(callback: types.CallbackQuery, state: FSMContext):
-    if callback.data == 'yes':
-        await callback.message.answer(
-            'Укажите максимальный вес в жиме лежа (Учитывая вес штанги 20 кг, указать в кг):'
-        )
-        await PersonChars.bench_results.set()
-
-    if callback.data == 'no':
-        await callback.message.answer(
-            'Каких результатов вы ожидаете от тренировок?',
-            reply_markup=kb.expected_results
-        )
-        await PersonChars.goals.set()
-
-
-@dp.message_handler(state=PersonChars.bench_results)
-async def add_bench_results(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        if message.text.isdigit() is False:
-            await message.answer('Необходимо ввести числовое значение')
-        else:
-            data['bench_results'] = int(message.text)
-
-            await message.answer(
-                'Укажите максимальный вес в становой тяге (Учитывая вес штанги 20 кг, указать в кг).',
-            )
-            await PersonChars.deadlift_results.set()
-
-
-@dp.message_handler(state=PersonChars.deadlift_results)
-async def add_deadlift_results(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        if message.text.isdigit() is False:
-            await message.answer('Необходимо ввести числовое значение')
-        else:
-            data['deadlift_results'] = int(message.text)
-
-            await message.answer(
-                'Укажите максимальный вес в приседаниях со штангой (Учитывая вес штанги 20 кг, указать в кг).'
-            )
-            await PersonChars.squats_results.set()
-
-
-@dp.message_handler(state=PersonChars.squats_results)
-async def add_squats_results(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        if message.text.isdigit() is False:
-
-            await message.answer('Необходимо ввести числовое значение')
-        else:
-            data['squats_results'] = int(message.text)
-
-            await message.answer(
-                'Каких результатов вы ожидаете от тренировок?',
-                reply_markup=kb.expected_results
-            )
-            await PersonChars.goals.set()
+    await callback.message.answer(
+        'Каких результатов вы ожидаете от тренировок?',
+        reply_markup=kb.expected_results
+    )
+    await PersonChars.goals.set()
 
 
 @dp.callback_query_handler(state=PersonChars.goals)
